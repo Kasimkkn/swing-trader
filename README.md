@@ -1,73 +1,116 @@
-# Welcome to your Lovable project
+# Swing Trader
+## ✓ 1 — High-level architecture
 
-## Project info
+1. Input: stock symbol (e.g., `LODHA`, or exchange-prefixed `NSE:LODHA`).
+2. Fetcher layer (microservices): price/timeseries, fundamentals, corporate filings, news & social sentiment, institutional flows.
+3. Data store: time-series DB or cloud DB (Postgres + timescale / or just Postgres) + cache (Redis).
+4. Processing / Feature layer: compute indicators (MA, EMA, RSI, MACD, ATR, volume averages, support/resistance, Fibonacci levels), fundamentals ratios, event flags.
+5. Signal engine (rules + ML): rule-based first; optionally ML ensemble later.
+6. Risk & sizing: position-size calculator given risk% and SL distance.
+7. API / UI: REST endpoint + simple React UI to accept symbol and show recommendation + charts.
+8. Backtesting / Simulation: backtrader / vectorbt / zipline-style pipeline to validate rules.
+9. Deployment: Docker + Kubernetes / or simple VPS with Docker Compose; scheduled workers (cron / Celery).
 
-**URL**: https://lovable.dev/projects/259aeb6a-d3f0-4a35-b8fe-529191914305
+## ✓ 2 — Suggested data sources (practical, developer-friendly)
 
-## How can I edit this code?
+--> Price / OHLCV: `yfinance` for quick prototyping (works for many Indian tickers), or broker APIs (Zerodha Kite Connect, Upstox) for live and reliable data.
+--> Intraday / Real-time: broker websockets (Kite), or paid feeds.
+--> Fundamentals & ratios: Screener.in (scraping / unofficial API), TickerTape, Moneycontrol (scrape), FinancialModelingPrep (global), or official company filings (NSE/BSE).
+--> Corporate filings / announcements: NSE/BSE official feeds (scrape or subscribe).
+--> News / Sentiment: NewsAPI, GNews, or custom scrape of Economic Times / Business Standard / Livemint + a small sentiment model (VADER / small finetuned classifier).
+--> FII/DII flows: NSE FII/DII daily reports, or vendor feeds.
+--> Alternative: paid vendors (Quandl premium, Refinitiv) if you want production-grade reliability.
 
-There are several ways of editing your application.
+> Note: Indian exchanges have rate limits and official APIs are limited; for production prefer broker feeds or paid data.
 
-**Use Lovable**
+## ✓ 3 — Rules & heuristics (how to decide Buy / Not buy)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/259aeb6a-d3f0-4a35-b8fe-529191914305) and start prompting.
+Start with a rule-based decision tree (easy to backtest). Example rules to -->recommend buy-->:
 
-Changes made via Lovable will be committed automatically to this repo.
+Must-pass (fundamental safety):
 
-**Use your preferred IDE**
+--> Company revenue or operating cashflow positive last 4 quarters.
+--> Net debt / equity < 0.6 (configurable).
+--> No major promoter pledge or serious corporate governance flags in last 6 months.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Technical filters (example):
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+--> Trend: price > 50 DMA (short-term bullish bias).
+--> Momentum: RSI(14) between 40–65 (not overbought); MACD bullish crossover in last 5 days.
+--> Breakout / support confirmation: either
 
-Follow these steps:
+  --> Pullback to 20/50 DMA and bullish reversal candle with volume > 1.2× 20-day average, OR
+  --> Breakout above recent resistance (e.g., 20-day high) with volume > 1.5× avg.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+News filter:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+--> No negative headlines or large negative sentiment spike in last 48 hrs.
 
-# Step 3: Install the necessary dependencies.
-npm i
+If all above true → Buy. Otherwise → Avoid or Watchlist.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## ✓ 4 — How to compute Entry, Stop-Loss, Target (simple, transparent rules)
 
-**Edit a file directly in GitHub**
+We’ll define levels based on price action and volatility:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+--> Entry (buy):
 
-**Use GitHub Codespaces**
+  --> If breakout strategy: buy on close above resistance `R` (e.g., 20-day high) OR buy on the next candle open after confirmation.
+  --> If dip strategy: buy when price shows bullish reversal near support `S` (20/50 DMA or an identified swing low).
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+--> Stop-Loss (SL):
 
-## What technologies are used for this project?
+  --> For breakout: SL = `R - k --> ATR(14)` or SL = last swing low — whichever is lower (k \~ 0.5–1).
+  --> For dip entry: SL = `S - 0.5 --> ATR(14)` or fixed percent (e.g., 4–8%) depending on timeframe.
+  --> Use ATR to adapt for volatility.
 
-This project is built with:
+--> Target (take-profit):
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+  --> Simple multiple: `Target = Entry + 2 --> (Entry - SL)` (R\:R of 1:2).
+  --> Or measured-move: `Target = Entry + width_of_channel` (height of breakout range) or next major resistance (Fibonacci extension 1.618).
+  --> You can also set multiple targets (partial sell at 1× risk, remainder at 2× risk).
 
-## How can I deploy this project?
+Example numeric:
 
-Simply open [Lovable](https://lovable.dev/projects/259aeb6a-d3f0-4a35-b8fe-529191914305) and click on Share -> Publish.
+--> Price = ₹1,120, breakout R = ₹1,100, ATR(14)=₹20.
+--> Entry on breakout close above ₹1,100 → buy ₹1,110.
+--> SL = 1,100 - (0.5 \--> 20) = ₹1,090. Risk per share = ₹20.
+--> Target = 1,110 + 2\-->20 = ₹1,150 (conservative) or measure further to ₹1,190 based on channel width.
 
-## Can I connect a custom domain to my Lovable project?
+## ✓ 5 — Risk & position sizing
 
-Yes, you can!
+--> Let `risk_per_trade = 1%` of portfolio.
+--> `position_size_shares = floor( (portfolio_value --> risk_per_trade) / (entry - SL) )`.
+--> Apply max exposure per sector and max simultaneous trades.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## ✓ 6 — Backtesting & validation
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+--> Use vectorbt (fast, numpy-based) or backtrader to validate rules over 5–10 years of data.
+--> Track metrics: CAGR, max drawdown, Sharpe, win rate, average R\:R, ## ✓ trades per year, slippage assumptions, transaction costs.
+
+## ✓ 7 — Tech stack & components
+
+--> Backend: Python (FastAPI) — easy microservices + async IO.
+--> Indicators / calc: `pandas`, `ta` (pandas\_ta) or `ta-lib` (if you compile it). `numpy`, `scipy`.
+--> Data fetching: `yfinance` for prototype; later integrate Kite Connect / broker APIs.
+--> Database: Postgres; for time series optionally TimescaleDB. Cache with Redis.
+--> Queue / scheduling: Celery + Redis or Prefect/Airflow for pipelines.
+--> Front end: React + Tailwind (you already use Tailwind) — simple input + results panel + chart (TradingView widget or lightweight charting like `react-stockcharts` or `recharts`).
+--> Container: Docker. CI: GitHub Actions. Deploy: DigitalOcean / AWS ECS / GCP Cloud Run.
+
+## ✓ 10 — Backtest & sanity checks to avoid overfitting
+
+--> Include transaction costs (0.05–0.3%) and slippage (0.1–0.5%).
+--> Walk-forward validation and cross-validation across sectors.
+--> Log false positives and edge cases (corporate actions, de-listings).
+
+## ✓ 11 — UX / result presentation (what the user sees)
+
+--> Simple card: `BUY / AVOID / WATCH` with reason tags (e.g., “Breakout with volume”, “Debt too high”).
+--> Show numeric levels: Entry ₹X, SL ₹Y, Target ₹Z, Position size for portfolio ₹P.
+--> Small chart with highlighted entry/SR levels and trade horizon suggestion (e.g., 2–6 weeks).
+--> Confidence score (0–100) based on how many rules passed.
+
+## ✓ 12 — Legal & risk disclaimers
+
+--> Provide a clear “not financial advice” notice in UI and logs; add user-acceptance of risk if you provide actionable signals.
+--> Consider throttling and compliance with data provider TOS (scraping vs API).

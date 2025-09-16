@@ -9,21 +9,20 @@ interface SignalCardProps {
 
 const SignalCard = ({ analysis }: SignalCardProps) => {
   const isBuySignal = analysis.signal === 'BUY';
-  
+
   return (
-    <Card className="p-6 bg-card border-border">
+    <Card className="p-6 bg-white/5 border-white/10">
       <div className="space-y-6">
         {/* Header with Signal and Company */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <Badge 
+              <Badge
                 variant={isBuySignal ? "default" : "destructive"}
-                className={`text-lg font-bold px-4 py-2 ${
-                  isBuySignal 
-                    ? 'bg-signal-buy text-signal-buy-foreground' 
-                    : 'bg-signal-avoid text-signal-avoid-foreground'
-                }`}
+                className={`text-base font-bold px-4 py-0 ${isBuySignal
+                  ? 'bg-signal-buy text-signal-buy-foreground'
+                  : 'bg-signal-avoid text-signal-avoid-foreground'
+                  }`}
               >
                 {analysis.signal}
               </Badge>
@@ -49,8 +48,8 @@ const SignalCard = ({ analysis }: SignalCardProps) => {
               {analysis.confidence}/100
             </span>
           </div>
-          <Progress 
-            value={analysis.confidence} 
+          <Progress
+            value={analysis.confidence}
             className="h-2 bg-muted"
           />
         </div>
@@ -60,7 +59,7 @@ const SignalCard = ({ analysis }: SignalCardProps) => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-accent/30 rounded border border-border">
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Entry</p>
-              <p className="font-mono font-semibold text-accent-blue">
+              <p className="font-mono font-semibold text-text-white">
                 ₹{analysis.entryPrice.toLocaleString()}
               </p>
             </div>
@@ -93,11 +92,10 @@ const SignalCard = ({ analysis }: SignalCardProps) => {
               <Badge
                 key={index}
                 variant="outline"
-                className={`text-xs ${
-                  isBuySignal
-                    ? 'border-signal-buy-muted text-signal-buy bg-signal-buy-muted/20'
-                    : 'border-signal-avoid-muted text-signal-avoid bg-signal-avoid-muted/20'
-                }`}
+                className={`text-xs ${isBuySignal
+                  ? 'border-signal-buy-muted text-signal-buy bg-signal-buy-muted/20'
+                  : 'border-signal-avoid-muted text-signal-avoid bg-signal-avoid-muted/20'
+                  }`}
               >
                 {reason}
               </Badge>

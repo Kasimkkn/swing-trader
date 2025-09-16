@@ -37,7 +37,7 @@ const SearchInput = ({ onSearch, isLoading }: SearchInputProps) => {
         <Button
           type="submit"
           disabled={isLoading || !symbol.trim()}
-          className="bg-accent-blue hover:bg-accent-blue/90 text-background font-medium px-6"
+          className="text-white hover:bg-text-white/90 text-background font-medium px-6"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

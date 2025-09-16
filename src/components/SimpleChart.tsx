@@ -10,41 +10,41 @@ const SimpleChart = ({ analysis }: SimpleChartProps) => {
   const chartData = analysis.chartData.map(item => ({
     date: item.date,
     price: item.close,
-    displayDate: new Date(item.date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    displayDate: new Date(item.date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
     })
   }));
 
   const isBuySignal = analysis.signal === 'BUY';
 
   return (
-    <Card className="p-4 bg-card border-border">
+    <Card className="p-4 bg-white/5 border-white/10">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-foreground">3-Month Price Chart</h3>
         <div className="text-sm text-muted-foreground">
           {analysis.symbol} - Daily Close
         </div>
       </div>
-      
+
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
-            <XAxis 
-              dataKey="displayDate" 
+            <XAxis
+              dataKey="displayDate"
               axisLine={false}
               tickLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
               interval="preserveStartEnd"
             />
-            <YAxis 
+            <YAxis
               domain={['dataMin - 20', 'dataMax + 20']}
               axisLine={false}
               tickLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
               tickFormatter={(value) => `₹${value}`}
             />
-            
+
             {/* Support Lines */}
             {analysis.supportResistance.support.map((level, index) => (
               <ReferenceLine
@@ -55,7 +55,7 @@ const SimpleChart = ({ analysis }: SimpleChartProps) => {
                 strokeOpacity={0.6}
               />
             ))}
-            
+
             {/* Resistance Lines */}
             {analysis.supportResistance.resistance.map((level, index) => (
               <ReferenceLine
@@ -66,13 +66,13 @@ const SimpleChart = ({ analysis }: SimpleChartProps) => {
                 strokeOpacity={0.6}
               />
             ))}
-            
+
             {/* Entry, Stop, Target Lines for BUY signals */}
             {isBuySignal && (
               <>
                 <ReferenceLine
                   y={analysis.entryPrice}
-                  stroke="hsl(var(--accent-blue))"
+                  stroke="hsl(var(--text-white))"
                   strokeWidth={2}
                 />
                 <ReferenceLine
@@ -87,16 +87,16 @@ const SimpleChart = ({ analysis }: SimpleChartProps) => {
                 />
               </>
             )}
-            
+
             <Line
               type="monotone"
               dataKey="price"
               stroke="hsl(var(--foreground))"
               strokeWidth={2}
               dot={false}
-              activeDot={{ 
-                r: 4, 
-                fill: 'hsl(var(--accent-blue))',
+              activeDot={{
+                r: 4,
+                fill: 'hsl(var(--text-white))',
                 stroke: 'hsl(var(--background))',
                 strokeWidth: 2
               }}
@@ -104,7 +104,7 @@ const SimpleChart = ({ analysis }: SimpleChartProps) => {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      
+
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-xs">
         <div className="flex items-center gap-2">
@@ -118,7 +118,7 @@ const SimpleChart = ({ analysis }: SimpleChartProps) => {
         {isBuySignal && (
           <>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-0.5 bg-accent-blue"></div>
+              <div className="w-3 h-0.5 bg-text-white"></div>
               <span className="text-muted-foreground">Entry</span>
             </div>
             <div className="flex items-center gap-2">

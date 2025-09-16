@@ -28,9 +28,9 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
   };
 
   return (
-    <Card className="p-4 bg-card border-border">
+    <Card className="p-4 bg-white/5 border-white/10">
       <h3 className="text-lg font-semibold text-foreground mb-4">Technical Indicators</h3>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="space-y-3">
           <div className="flex justify-between items-center">
@@ -39,12 +39,11 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
               ₹{technicals.price.toLocaleString()}
             </span>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">50 DMA</span>
-            <span className={`font-mono font-semibold ${
-              technicals.price > technicals.dma50 ? 'text-signal-buy' : 'text-signal-avoid'
-            }`}>
+            <span className={`font-mono font-semibold ${technicals.price > technicals.dma50 ? 'text-signal-buy' : 'text-signal-avoid'
+              }`}>
               ₹{technicals.dma50.toLocaleString()}
             </span>
           </div>
@@ -57,11 +56,11 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
               {technicals.rsi14}
             </span>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">MACD Signal</span>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={`font-mono text-xs ${getMacdColor(technicals.macdSignal)}`}
             >
               {technicals.macdSignal}
@@ -76,7 +75,7 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
               {technicals.volumeVsAvg.toFixed(1)}x
             </span>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">ATR (14)</span>
             <span className="font-mono font-semibold text-muted-foreground">
