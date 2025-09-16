@@ -6,7 +6,7 @@ import SignalCard from '@/components/SignalCard';
 import TechnicalPanel from '@/components/TechnicalPanel';
 import SimpleChart from '@/components/SimpleChart';
 import { StockAnalysis } from '@/types/stock';
-import { getStockAnalysis } from '@/services/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [analysis, setAnalysis] = useState<StockAnalysis | null>(null);
@@ -18,25 +18,34 @@ const Index = () => {
     setAnalysis(null);
     
     try {
-      const result = await getStockAnalysis(symbol);
+      console.log('Analyzing stock:', symbol);
       
-      if (result) {
-        setAnalysis(result);
+      const { data, error } = await supabase.functions.invoke('analyze-stock', {
+        body: { symbol: symbol.toUpperCase() }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Failed to analyze stock');
+      }
+      
+      if (data && data.symbol) {
+        setAnalysis(data);
         toast({
           title: "Analysis Complete",
-          description: `Generated ${result.signal} signal for ${result.symbol}`,
+          description: `Generated ${data.signal} signal for ${data.symbol} (${data.confidence}% confidence)`,
         });
       } else {
         toast({
           title: "Stock Not Found",
-          description: `No analysis available for "${symbol}". Try RELIANCE, TCS, LODHA, SUZLON, or ZOMATO.`,
+          description: `Unable to find data for "${symbol}". Please check the symbol and try again.`,
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Stock analysis error:', error);
       toast({
         title: "Analysis Failed",
-        description: "Unable to analyze stock. Please try again.",
+        description: error.message || "Unable to analyze stock. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -95,8 +104,8 @@ const Index = () => {
       <footer className="border-t border-border bg-background mt-16">
         <div className="mx-auto max-w-6xl px-4 py-6">
           <p className="text-center text-sm text-muted-foreground">
-            <strong>Disclaimer:</strong> This tool uses mock data for demonstration purposes only. 
-            Not intended for actual investment decisions. Always consult with financial advisors.
+            <strong>Disclaimer:</strong> This tool provides automated stock analysis for educational purposes. 
+            Not intended as financial advice. Always consult with qualified financial advisors before investing.
           </p>
         </div>
       </footer>
