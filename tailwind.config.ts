@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -38,6 +41,9 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          blue: "hsl(var(--accent-blue))",
+          purple: "hsl(var(--accent-purple))",
+          orange: "hsl(var(--accent-orange))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -46,6 +52,20 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        signal: {
+          buy: "hsl(var(--signal-buy))",
+          "buy-foreground": "hsl(var(--signal-buy-foreground))",
+          "buy-muted": "hsl(var(--signal-buy-muted))",
+          avoid: "hsl(var(--signal-avoid))",
+          "avoid-foreground": "hsl(var(--signal-avoid-foreground))",
+          "avoid-muted": "hsl(var(--signal-avoid-muted))",
+        },
+        chart: {
+          grid: "hsl(var(--chart-grid))",
+          text: "hsl(var(--chart-text))",
+          "candle-up": "hsl(var(--chart-candle-up))",
+          "candle-down": "hsl(var(--chart-candle-down))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
