@@ -21,7 +21,7 @@ const SearchInput = ({ onSearch, isLoading }: SearchInputProps) => {
   const recentSearches = ['RELIANCE', 'TCS', 'LODHA'];
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4">
+    <div className="w-full max-w-md space-y-4">
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -46,11 +46,11 @@ const SearchInput = ({ onSearch, isLoading }: SearchInputProps) => {
           )}
         </Button>
       </form>
-      
+
       {recentSearches.length > 0 && !isLoading && (
-        <div className="text-center">
+        <div className="flex gap-2 items-baseline justify-center">
           <p className="text-sm text-muted-foreground mb-2">Try:</p>
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap gap-2">
             {recentSearches.map((recent) => (
               <button
                 key={recent}

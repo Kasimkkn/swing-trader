@@ -12,18 +12,6 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-interface YahooQuote {
-  regularMarketPrice: number;
-  regularMarketPreviousClose: number;
-  regularMarketVolume: number;
-  regularMarketDayHigh: number;
-  regularMarketDayLow: number;
-  regularMarketOpen: number;
-  marketCap: number;
-  fiftyDayAverage: number;
-  twoHundredDayAverage: number;
-}
-
 interface HistoricalData {
   date: string;
   open: number;
@@ -36,23 +24,23 @@ interface HistoricalData {
 // Technical indicator calculations
 function calculateRSI(prices: number[], period: number = 14): number {
   if (prices.length < period + 1) return 50;
-  
+
   const changes = prices.slice(1).map((price, i) => price - prices[i]);
   const gains = changes.map(change => change > 0 ? change : 0);
   const losses = changes.map(change => change < 0 ? -change : 0);
-  
+
   const avgGain = gains.slice(-period).reduce((a, b) => a + b) / period;
   const avgLoss = losses.slice(-period).reduce((a, b) => a + b) / period;
-  
+
   if (avgLoss === 0) return 100;
-  
+
   const rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
 }
 
 function calculateSMA(prices: number[], period: number): number {
   if (prices.length < period) return prices[prices.length - 1];
-  
+
   const recentPrices = prices.slice(-period);
   return recentPrices.reduce((a, b) => a + b) / period;
 }
@@ -61,45 +49,45 @@ function calculateMACD(prices: number[]): { line: number; signal: number; histog
   const ema12 = calculateEMA(prices, 12);
   const ema26 = calculateEMA(prices, 26);
   const macdLine = ema12 - ema26;
-  
+
   // Simplified signal line calculation
   const macdSignal = macdLine * 0.8; // Approximation
   const histogram = macdLine - macdSignal;
-  
+
   return { line: macdLine, signal: macdSignal, histogram };
 }
 
 function calculateEMA(prices: number[], period: number): number {
   if (prices.length === 0) return 0;
   if (prices.length < period) return prices[prices.length - 1];
-  
+
   const k = 2 / (period + 1);
   let ema = prices[0];
-  
+
   for (let i = 1; i < prices.length; i++) {
     ema = (prices[i] * k) + (ema * (1 - k));
   }
-  
+
   return ema;
 }
 
 function calculateATR(data: HistoricalData[], period: number = 14): number {
   if (data.length < period) return 0;
-  
+
   const trueRanges = [];
-  
+
   for (let i = 1; i < data.length; i++) {
     const high = data[i].high;
     const low = data[i].low;
     const prevClose = data[i - 1].close;
-    
+
     const tr1 = high - low;
     const tr2 = Math.abs(high - prevClose);
     const tr3 = Math.abs(low - prevClose);
-    
+
     trueRanges.push(Math.max(tr1, tr2, tr3));
   }
-  
+
   const recentTRs = trueRanges.slice(-period);
   return recentTRs.reduce((a, b) => a + b) / period;
 }
@@ -116,7 +104,7 @@ function generateSignal(indicators: any, currentPrice: number, ma50: number): {
   const reasons: string[] = [];
   let bullishCount = 0;
   let bearishCount = 0;
-  
+
   // RSI analysis
   if (indicators.rsi < 30) {
     bullishCount += 2;
@@ -125,7 +113,7 @@ function generateSignal(indicators: any, currentPrice: number, ma50: number): {
     bearishCount += 2;
     reasons.push('RSI Overbought');
   }
-  
+
   // Price vs Moving Average
   if (currentPrice > ma50) {
     bullishCount += 1;
@@ -134,7 +122,7 @@ function generateSignal(indicators: any, currentPrice: number, ma50: number): {
     bearishCount += 1;
     reasons.push('Below 50 DMA');
   }
-  
+
   // MACD analysis
   if (indicators.macd.line > indicators.macd.signal) {
     bullishCount += 1;
@@ -143,30 +131,30 @@ function generateSignal(indicators: any, currentPrice: number, ma50: number): {
     bearishCount += 1;
     reasons.push('MACD Bearish');
   }
-  
+
   // Volume analysis (simplified)
   if (indicators.volumeRatio > 1.2) {
     bullishCount += 1;
     reasons.push('High Volume');
   }
-  
+
   const signal = bullishCount > bearishCount ? 'BUY' : 'AVOID';
   const confidence = Math.min(95, Math.max(55, (Math.abs(bullishCount - bearishCount) / 5) * 100));
-  
+
   let entryPrice = currentPrice;
   let stopLoss = currentPrice * 0.95;
   let target = currentPrice * 1.08;
-  
+
   if (signal === 'BUY') {
     entryPrice = currentPrice * 1.002; // Small premium for entry
     stopLoss = currentPrice * 0.95;
     target = currentPrice * 1.08;
   }
-  
+
   const risk = entryPrice - stopLoss;
   const reward = target - entryPrice;
   const riskReward = risk > 0 ? `1:${(reward / risk).toFixed(1)}` : '1:2';
-  
+
   return {
     signal,
     confidence: Math.round(confidence),
@@ -182,35 +170,35 @@ async function fetchYahooFinanceData(symbol: string) {
   try {
     // For Indian stocks, append .NS for NSE or .BO for BSE
     const yahooSymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
-    
+
     // Using a free Yahoo Finance API alternative
     const quoteUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?range=3mo&interval=1d`;
-    
+
     console.log(`Fetching data for ${yahooSymbol}`);
-    
+
     const response = await fetch(quoteUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
-    
+
     if (!response.ok) {
       throw new Error(`Yahoo Finance API error: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
+
     if (!data.chart || !data.chart.result || !data.chart.result[0]) {
       throw new Error('Invalid response from Yahoo Finance');
     }
-    
+
     const result = data.chart.result[0];
     const quote = result.indicators.quote[0];
     const timestamps = result.timestamp;
-    
+
     const currentPrice = quote.close[quote.close.length - 1];
     const volume = quote.volume[quote.volume.length - 1];
-    
+
     // Build historical data
     const historicalData: HistoricalData[] = [];
     for (let i = 0; i < timestamps.length; i++) {
@@ -225,14 +213,14 @@ async function fetchYahooFinanceData(symbol: string) {
         });
       }
     }
-    
+
     return {
       currentPrice,
       volume,
       historicalData,
       meta: result.meta
     };
-    
+
   } catch (error) {
     console.error('Error fetching Yahoo Finance data:', error);
     throw error;
@@ -247,7 +235,7 @@ serve(async (req) => {
 
   try {
     const { symbol } = await req.json();
-    
+
     if (!symbol) {
       throw new Error('Symbol is required');
     }
@@ -265,7 +253,7 @@ serve(async (req) => {
 
     if (existingAnalysis && existingAnalysis.length > 0) {
       console.log('Returning cached analysis');
-      
+
       // Get supporting data
       const [{ data: company }, { data: prices }, { data: technicals }] = await Promise.all([
         supabase.from('companies').select('*').eq('symbol', symbol.toUpperCase()).single(),
@@ -274,7 +262,7 @@ serve(async (req) => {
       ]);
 
       const analysis = existingAnalysis[0];
-      
+
       return new Response(JSON.stringify({
         symbol: analysis.symbol,
         companyName: company?.company_name || symbol,
@@ -327,7 +315,7 @@ serve(async (req) => {
     // Fetch fresh data from Yahoo Finance
     console.log('Fetching fresh data from Yahoo Finance...');
     const marketData = await fetchYahooFinanceData(symbol);
-    
+
     if (!marketData.currentPrice) {
       throw new Error('Unable to fetch current stock price');
     }
@@ -335,7 +323,7 @@ serve(async (req) => {
     // Calculate technical indicators
     const closingPrices = marketData.historicalData.map(d => d.close);
     const volumes = marketData.historicalData.map(d => d.volume);
-    
+
     const rsi = calculateRSI(closingPrices);
     const ma50 = calculateSMA(closingPrices, 50);
     const ma200 = calculateSMA(closingPrices, 200);
@@ -367,7 +355,7 @@ serve(async (req) => {
         volume: marketData.volume,
         adjusted_close: marketData.currentPrice
       }),
-      
+
       // Store technical indicators
       supabase.from('technical_indicators').upsert({
         symbol: symbol.toUpperCase(),
@@ -381,7 +369,7 @@ serve(async (req) => {
         atr_14: atr,
         volume_sma_20: Math.round(volumeSMA)
       }),
-      
+
       // Store analysis
       supabase.from('stock_analysis').upsert({
         symbol: symbol.toUpperCase(),
@@ -453,8 +441,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in analyze-stock function:', error);
-    
-    return new Response(JSON.stringify({ 
+
+    return new Response(JSON.stringify({
       error: error.message || 'Failed to analyze stock',
       details: error.toString()
     }), {
