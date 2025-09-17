@@ -60,6 +60,9 @@ export default {
           avoid: "hsl(var(--signal-avoid))",
           "avoid-foreground": "hsl(var(--signal-avoid-foreground))",
           "avoid-muted": "hsl(var(--signal-avoid-muted))",
+          hold: "hsl(var(--signal-hold))",
+          "hold-foreground": "hsl(var(--signal-hold-foreground))",
+          "hold-muted": "hsl(var(--signal-hold-muted))",
         },
         chart: {
           grid: "hsl(var(--chart-grid))",

@@ -2,3 +2,9 @@ project_id = "lkvfmtaxtdfrhmdkauwv"
 
 [functions.analyze-stock]
 verify_jwt = false
+
+[functions.research-stock]
+verify_jwt = false
+
+[functions.morning-recommendations]
+verify_jwt = false

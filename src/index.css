@@ -8,72 +8,64 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Professional dark theme - modern tool aesthetic */
-    --background: 215 28% 7%;
-    --foreground: 210 20% 90%;
+    /* Pure black & white theme */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 217 25% 9%;
-    --card-foreground: 210 20% 90%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 217 25% 9%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 20% 90%;
-    --primary-foreground: 215 28% 7%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 217 19% 12%;
-    --secondary-foreground: 210 20% 90%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217 19% 12%;
-    --muted-foreground: 215 13% 65%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 217 19% 15%;
-    --accent-foreground: 210 20% 90%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 20% 90%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 19% 15%;
-    --input: 217 19% 12%;
-    --ring: 210 20% 90%;
+    --border: 0 0% 20%;
+    --input: 0 0% 10%;
+    --ring: 0 0% 100%;
 
-    --radius: 0.25rem;
+    --radius: 0.375rem;
 
-    /* Signal colors */
-    --signal-buy: 142 76% 36%;
-    --signal-buy-foreground: 142 76% 85%;
-    --signal-buy-muted: 142 76% 20%;
+    /* Signal colors - minimal */
+    --signal-buy: 120 100% 40%;
+    --signal-buy-foreground: 0 0% 100%;
+    --signal-buy-muted: 120 100% 20%;
 
-    --signal-avoid: 0 62.8% 50%;
-    --signal-avoid-foreground: 0 85% 90%;
-    --signal-avoid-muted: 0 62.8% 25%;
+    --signal-avoid: 0 100% 50%;
+    --signal-avoid-foreground: 0 0% 100%;
+    --signal-avoid-muted: 0 100% 25%;
 
-    /* Professional accents */
-    --accent-blue: 213 94% 68%;
-    --accent-purple: 263 70% 50%;
-    --accent-orange: 31 81% 56%;
+    --signal-hold: 45 100% 50%;
+    --signal-hold-foreground: 0 0% 100%;
+    --signal-hold-muted: 45 100% 25%;
 
     /* Chart colors */
-    --chart-grid: 217 19% 20%;
-    --chart-text: 215 13% 65%;
-    --chart-candle-up: 142 76% 36%;
-    --chart-candle-down: 0 62.8% 50%;
+    --chart-grid: 0 0% 20%;
+    --chart-text: 0 0% 60%;
+    --chart-candle-up: 120 100% 40%;
+    --chart-candle-down: 0 100% 50%;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 0 0% 100%;
   }
 
   .dark {
