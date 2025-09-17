@@ -1,3 +1,8 @@
+2. No need to store each and every thing when deep research we just want stock and their price other than that all the information will be fetch only no storing
+1. Wishlits addin featured with deleting
+2. My portfolio where ill add my stock with qty, buying price and status of  sold / hold and same modal will open where selling price will be added and status must change to sold
+3. A portfolio page with all the active purchase, sold, profit, loss management Ui and history of stocks
+4. A bottom nav on mobile devices and sidebar on big devices than mobile with menu like today, analyse, portfolio, wishlist
 # Swing Trader
 ## ✓ 1 — High-level architecture
 

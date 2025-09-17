@@ -1,11 +1,9 @@
-import { BarChart3 } from 'lucide-react';
 
 const Header = () => {
   return (
-    <header className="border-b border-border bg-black text-white">
+    <header className="fixed top-0 left-0 w-full md:pl-[70px] border-b border-border bg-white/5 backdrop-blur-md text-white">
       <div className="px-4 py-4">
         <div className="flex items-center gap-3">
-          <BarChart3 className="h-6 w-6 text-text-white" />
           <h1 className="text-xl font-semibold text-foreground">
             Signal Analyzer
           </h1>
