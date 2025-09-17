@@ -1,6 +1,6 @@
 import React from 'react';
 import { Home, BarChart3, Briefcase, Heart, Search, Bell, Settings, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 interface NavigationItem {
     id: string;
@@ -11,29 +11,30 @@ interface NavigationItem {
 }
 
 const AppNavigations: React.FC = () => {
+    const pathName = useLocation().pathname;
     const navigationItems: NavigationItem[] = [
         {
             id: 'today',
-            label: 'Today',
+            label: 'Latest',
             href: '/today',
             icon: Home,
             isActive: true, // Example active state
         },
         {
             id: 'analyse',
-            label: 'Analyse',
+            label: 'Search',
             href: '/analyse',
             icon: BarChart3,
         },
         {
             id: 'portfolio',
-            label: 'Portfolio',
+            label: 'My PR',
             href: '/portfolio',
             icon: Briefcase,
         },
         {
             id: 'wishlist',
-            label: 'Wishlist',
+            label: 'Heart',
             href: '/wishlist',
             icon: Heart,
         },
@@ -41,28 +42,30 @@ const AppNavigations: React.FC = () => {
 
     const NavItem: React.FC<{ item: NavigationItem; className?: string }> = ({ item, className = '' }) => {
         const Icon = item.icon;
+        const isActive = pathName === item.href; // <-- check current route
 
         return (
             <Link
                 to={item.href}
-                className={`group relative flex flex-col items-center justify-center px-3 py-2 rounded-lg transition-all duration-200 ${item.isActive
-                    ? 'bg-white text-black shadow-lg'
-                    : 'text-white hover:text-white/50 hover:bg-white/5'
+                className={`group relative flex md:flex-col items-center py-2 px-2 rounded-md justify-center transition-all duration-200 max-md:gap-2 ${isActive ? 'bg-white/10' : 'text-white hover:text-white/50 hover:bg-white/5'
                     } ${className}`}
                 title={item.label}
             >
-                <Icon className={`w-5 h-5 mb-1 transition-all duration-200 ${item.isActive ? 'scale-110' : 'group-hover:scale-105'
-                    }`} />
-                <span className="text-xs font-semibold">{item.label}</span>
+                <Icon
+                    className={`w-5 h-5 md:w-4 md:h-4 md:mb-2 transition-all duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'
+                        }`}
+                />
+                <span className="text-xs">{item.label}</span>
             </Link>
         );
     };
 
+
     return (
         <>
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/5 backdrop-blur-md border-t border-white/10 z-50">
-                <div className="flex items-center justify-around h-16 px-4">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black backdrop-blur-md border-t border-white/10 z-50">
+                <div className="flex items-center justify-around h-16">
                     {navigationItems.map((item) => (
                         <div key={item.id} className="flex-1 flex justify-center">
                             <NavItem item={item} />
@@ -72,7 +75,7 @@ const AppNavigations: React.FC = () => {
             </nav>
 
             {/* Desktop Left Sidebar */}
-            <nav className="hidden md:block fixed top-0 left-0 h-screen bg-white/5 backdrop-blur-md border-r border-white/10 z-50" style={{ width: '70px' }}>
+            <nav className="hidden md:block fixed top-0 left-0 h-screen bg-white/5 backdrop-blur-md border-r border-white/10 z-50 w-16">
                 <div className="flex flex-col h-full">
                     {/* Logo/Brand Section */}
                     <div className="flex items-center justify-center p-4 border-b border-white/10">

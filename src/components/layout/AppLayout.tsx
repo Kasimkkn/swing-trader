@@ -9,7 +9,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <aside>
                 <AppNavigations />
             </aside>
-            <main className='md:pl-[70px] pt-[45px] max-md:pb-[30px]'>
+            <main className='md:pl-24 pl-4 pt-20 max-md:pb-24 pr-4'>
                 {children}
             </main>
         </section>

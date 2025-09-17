@@ -38,15 +38,15 @@ const MorningRecommendations = () => {
     setIsLoading(true);
     try {
       console.log('Fetching morning recommendations...');
-      
+
       const { data, error } = await supabase.functions.invoke('morning-recommendations');
-      
+
       if (error) {
         throw new Error(error.message || 'Failed to fetch recommendations');
       }
 
       const result = data as RecommendationsData;
-      
+
       if (result.success) {
         setRecommendations(result.recommendations);
         setLastUpdated(result.generatedAt);
@@ -86,17 +86,17 @@ const MorningRecommendations = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex max-md:flex-col gap-4 items-start md:items-center justify-between">
         <div className="flex items-center gap-3">
           <Sunrise className="h-6 w-6" />
           <div>
-            <h2 className="text-2xl font-bold">Morning Stock Picks</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-lg md:text-2xl font-bold">Morning Stock Picks</h2>
+            <p className="text-muted-foreground text-xs md:text-sm">
               AI-powered daily recommendations for 2-3 day trades
             </p>
           </div>
         </div>
-        <Button 
+        <Button
           onClick={fetchRecommendations}
           disabled={isLoading}
           variant="outline"
@@ -141,7 +141,7 @@ const MorningRecommendations = () => {
                 <p className="text-lg font-bold">{stock.confidence}%</p>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               {/* Price Targets */}
               <div className="grid grid-cols-3 gap-3 text-xs">

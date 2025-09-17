@@ -11,7 +11,7 @@ const SignalCard = ({ analysis }: SignalCardProps) => {
   const isBuySignal = analysis.signal === 'BUY';
 
   return (
-    <Card className="p-6 bg-white/5 border-white/10">
+    <Card className="p-4 md:p-6 bg-white/5 border-white/10">
       <div className="space-y-6">
         {/* Header with Signal and Company */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -32,7 +32,7 @@ const SignalCard = ({ analysis }: SignalCardProps) => {
             </div>
             <p className="text-muted-foreground">{analysis.companyName}</p>
           </div>
-          <div className="text-right">
+          <div className="">
             <p className="text-sm text-muted-foreground">Current Price</p>
             <p className="font-mono text-2xl font-bold text-foreground">
               ₹{analysis.currentPrice.toLocaleString()}

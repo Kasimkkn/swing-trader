@@ -48,7 +48,7 @@ const SearchInput = ({ onSearch, isLoading }: SearchInputProps) => {
       </form>
 
       {recentSearches.length > 0 && !isLoading && (
-        <div className="flex gap-2 items-baseline justify-center">
+        <div className="flex gap-2 items-baseline md:justify-center">
           <p className="text-sm text-muted-foreground mb-2">Try:</p>
           <div className="flex flex-wrap gap-2">
             {recentSearches.map((recent) => (
