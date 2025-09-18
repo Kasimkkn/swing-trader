@@ -1,5 +1,74 @@
-export type SignalType = 'BUY' | 'AVOID';
+export type SignalType = 'BUY' | 'SELL' | 'HOLD';
 
+// Master Stocks table
+export interface Stock {
+  id: string;
+  symbol: string;
+  company_name: string;
+  current_price?: number;
+  industry_category?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// AI Recommendations table
+export interface AIRecommendation {
+  id: string;
+  stock_id: string;
+  signal: SignalType;
+  confidence: number;
+  target_price?: number;
+  stop_loss?: number;
+  entry_price?: number;
+  ema9?: number;
+  ema20?: number;
+  rsi?: number;
+  reasons?: string[];
+  recommendation_date: string;
+  created_at: string;
+  updated_at: string;
+  stock?: Stock; // Join with stocks table
+}
+
+// Search/Analysis table
+export interface SearchAnalysis {
+  id: string;
+  stock_id: string;
+  analysis_type: string;
+  technical_data?: any;
+  fundamental_data?: any;
+  search_query?: string;
+  results?: any;
+  created_at: string;
+  updated_at: string;
+  stock?: Stock; // Join with stocks table
+}
+
+// Portfolio table
+export interface Portfolio {
+  id: string;
+  stock_id: string;
+  quantity: number;
+  buying_price: number;
+  selling_price?: number;
+  status: 'hold' | 'sold';
+  buy_date: string;
+  sell_date?: string;
+  created_at: string;
+  updated_at: string;
+  stock?: Stock; // Join with stocks table
+}
+
+// Wishlist table
+export interface Wishlist {
+  id: string;
+  stock_id: string;
+  created_at: string;
+  updated_at: string;
+  stock?: Stock; // Join with stocks table
+}
+
+// Legacy interfaces for backward compatibility
 export interface StockAnalysis {
   symbol: string;
   companyName: string;
@@ -44,7 +113,6 @@ export interface ChartData {
   close: number;
   volume: number;
 }
-
 
 export interface StockResearch {
   symbol: string;
@@ -113,11 +181,12 @@ export interface StockResearch {
   };
 }
 
+// Legacy interfaces (keeping for backward compatibility)
 export interface Stocks {
   id: string;
   symbol: string;
   companyName: string;
-  indusrtry?: string;
+  industry?: string;
 }
 
 export interface PortfolioStocks extends Stocks {

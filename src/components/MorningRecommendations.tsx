@@ -9,16 +9,21 @@ import { RefreshCw, Sunrise, TrendingUp, Target, Shield, Clock } from 'lucide-re
 interface StockRecommendation {
   symbol: string;
   companyName: string;
-  signal: 'BUY' | 'HOLD' | 'SELL';
-  buyingPrice: number;
-  sellingPrice: number;
-  stopLoss: number;
-  timeframe: string;
+  signal: 'BUY' | 'SELL' | 'HOLD';
   confidence: number;
+  entryPrice: number;
+  targetPrice: number;
+  stopLoss: number;
+  riskReward: string;
   reasons: string[];
-  sectorTrend: string;
-  dma20: number;
-  dma30: number;
+  technicals: {
+    currentPrice: number;
+    dma20: number;
+    dma30: number;
+    rsi: number;
+    volume: number;
+    avgVolume: number;
+  };
 }
 
 interface RecommendationsData {
@@ -150,14 +155,14 @@ const MorningRecommendations = () => {
                     <TrendingUp className="h-3 w-3" />
                     <span className="text-muted-foreground">Entry</span>
                   </div>
-                  <p className="font-bold">₹{stock.buyingPrice}</p>
-                </div>
-                <div className="text-center p-2 bg-signal-buy-muted rounded">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <Target className="h-3 w-3" />
-                    <span className="text-muted-foreground">Target</span>
-                  </div>
-                  <p className="font-bold">₹{stock.sellingPrice}</p>
+                   <p className="font-bold">₹{stock.entryPrice}</p>
+                 </div>
+                 <div className="text-center p-2 bg-signal-buy-muted rounded">
+                   <div className="flex items-center justify-center gap-1 mb-1">
+                     <Target className="h-3 w-3" />
+                     <span className="text-muted-foreground">Target</span>
+                   </div>
+                   <p className="font-bold">₹{stock.targetPrice}</p>
                 </div>
                 <div className="text-center p-2 bg-signal-avoid-muted rounded">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -170,14 +175,14 @@ const MorningRecommendations = () => {
 
               {/* Technical Levels */}
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 bg-muted rounded text-center">
-                  <p className="text-muted-foreground">20 DMA</p>
-                  <p className="font-medium">₹{stock.dma20}</p>
-                </div>
-                <div className="p-2 bg-muted rounded text-center">
-                  <p className="text-muted-foreground">30 DMA</p>
-                  <p className="font-medium">₹{stock.dma30}</p>
-                </div>
+                 <div className="p-2 bg-muted rounded text-center">
+                   <p className="text-muted-foreground">20 DMA</p>
+                   <p className="font-medium">₹{stock.technicals.dma20.toFixed(2)}</p>
+                 </div>
+                 <div className="p-2 bg-muted rounded text-center">
+                   <p className="text-muted-foreground">30 DMA</p>
+                   <p className="font-medium">₹{stock.technicals.dma30.toFixed(2)}</p>
+                 </div>
               </div>
 
               {/* Reasons */}
@@ -192,12 +197,12 @@ const MorningRecommendations = () => {
                 </div>
               </div>
 
-              {/* Timeframe */}
-              <div className="text-center pt-2 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  Timeframe: <span className="font-medium">{stock.timeframe}</span>
-                </p>
-              </div>
+               {/* Risk Reward */}
+               <div className="text-center pt-2 border-t border-border">
+                 <p className="text-xs text-muted-foreground">
+                   Risk:Reward: <span className="font-medium">{stock.riskReward}</span>
+                 </p>
+               </div>
             </CardContent>
           </Card>
         ))}

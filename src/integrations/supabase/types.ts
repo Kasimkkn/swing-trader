@@ -14,182 +14,214 @@ export type Database = {
   }
   public: {
     Tables: {
-      companies: {
+      ai_recommendations: {
+        Row: {
+          confidence: number
+          created_at: string
+          ema20: number | null
+          ema9: number | null
+          entry_price: number | null
+          id: string
+          reasons: string[] | null
+          recommendation_date: string
+          rsi: number | null
+          signal: string
+          stock_id: string
+          stop_loss: number | null
+          target_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          ema20?: number | null
+          ema9?: number | null
+          entry_price?: number | null
+          id?: string
+          reasons?: string[] | null
+          recommendation_date?: string
+          rsi?: number | null
+          signal: string
+          stock_id: string
+          stop_loss?: number | null
+          target_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          ema20?: number | null
+          ema9?: number | null
+          entry_price?: number | null
+          id?: string
+          reasons?: string[] | null
+          recommendation_date?: string
+          rsi?: number | null
+          signal?: string
+          stock_id?: string
+          stop_loss?: number | null
+          target_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_recommendations_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio: {
+        Row: {
+          buy_date: string
+          buying_price: number
+          created_at: string
+          id: string
+          quantity: number
+          sell_date: string | null
+          selling_price: number | null
+          status: string
+          stock_id: string
+          updated_at: string
+        }
+        Insert: {
+          buy_date?: string
+          buying_price: number
+          created_at?: string
+          id?: string
+          quantity: number
+          sell_date?: string | null
+          selling_price?: number | null
+          status?: string
+          stock_id: string
+          updated_at?: string
+        }
+        Update: {
+          buy_date?: string
+          buying_price?: number
+          created_at?: string
+          id?: string
+          quantity?: number
+          sell_date?: string | null
+          selling_price?: number | null
+          status?: string
+          stock_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_analysis: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          fundamental_data: Json | null
+          id: string
+          results: Json | null
+          search_query: string | null
+          stock_id: string
+          technical_data: Json | null
+          updated_at: string
+        }
+        Insert: {
+          analysis_type?: string
+          created_at?: string
+          fundamental_data?: Json | null
+          id?: string
+          results?: Json | null
+          search_query?: string | null
+          stock_id: string
+          technical_data?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          fundamental_data?: Json | null
+          id?: string
+          results?: Json | null
+          search_query?: string | null
+          stock_id?: string
+          technical_data?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_analysis_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stocks: {
         Row: {
           company_name: string
           created_at: string
-          exchange: string | null
+          current_price: number | null
           id: string
-          market_cap: number | null
-          sector: string | null
+          industry_category: string | null
           symbol: string
           updated_at: string
         }
         Insert: {
           company_name: string
           created_at?: string
-          exchange?: string | null
+          current_price?: number | null
           id?: string
-          market_cap?: number | null
-          sector?: string | null
+          industry_category?: string | null
           symbol: string
           updated_at?: string
         }
         Update: {
           company_name?: string
           created_at?: string
-          exchange?: string | null
+          current_price?: number | null
           id?: string
-          market_cap?: number | null
-          sector?: string | null
+          industry_category?: string | null
           symbol?: string
           updated_at?: string
         }
         Relationships: []
       }
-      stock_analysis: {
+      wishlist: {
         Row: {
-          analysis_date: string
-          confidence: number
           created_at: string
-          current_price: number
-          entry_price: number | null
-          expires_at: string
           id: string
-          reasons: string[]
-          risk_reward: string | null
-          signal: string
-          stop_loss: number | null
-          symbol: string
-          target_price: number | null
+          stock_id: string
           updated_at: string
         }
         Insert: {
-          analysis_date?: string
-          confidence: number
           created_at?: string
-          current_price: number
-          entry_price?: number | null
-          expires_at?: string
           id?: string
-          reasons?: string[]
-          risk_reward?: string | null
-          signal: string
-          stop_loss?: number | null
-          symbol: string
-          target_price?: number | null
+          stock_id: string
           updated_at?: string
         }
         Update: {
-          analysis_date?: string
-          confidence?: number
           created_at?: string
-          current_price?: number
-          entry_price?: number | null
-          expires_at?: string
           id?: string
-          reasons?: string[]
-          risk_reward?: string | null
-          signal?: string
-          stop_loss?: number | null
-          symbol?: string
-          target_price?: number | null
+          stock_id?: string
           updated_at?: string
         }
-        Relationships: []
-      }
-      stock_prices: {
-        Row: {
-          adjusted_close: number | null
-          close_price: number
-          created_at: string
-          date: string
-          high_price: number
-          id: string
-          low_price: number
-          open_price: number
-          symbol: string
-          volume: number
-        }
-        Insert: {
-          adjusted_close?: number | null
-          close_price: number
-          created_at?: string
-          date: string
-          high_price: number
-          id?: string
-          low_price: number
-          open_price: number
-          symbol: string
-          volume: number
-        }
-        Update: {
-          adjusted_close?: number | null
-          close_price?: number
-          created_at?: string
-          date?: string
-          high_price?: number
-          id?: string
-          low_price?: number
-          open_price?: number
-          symbol?: string
-          volume?: number
-        }
-        Relationships: []
-      }
-      technical_indicators: {
-        Row: {
-          atr_14: number | null
-          bollinger_lower: number | null
-          bollinger_middle: number | null
-          bollinger_upper: number | null
-          created_at: string
-          date: string
-          id: string
-          ma_200: number | null
-          ma_50: number | null
-          macd_histogram: number | null
-          macd_line: number | null
-          macd_signal: number | null
-          rsi_14: number | null
-          symbol: string
-          volume_sma_20: number | null
-        }
-        Insert: {
-          atr_14?: number | null
-          bollinger_lower?: number | null
-          bollinger_middle?: number | null
-          bollinger_upper?: number | null
-          created_at?: string
-          date: string
-          id?: string
-          ma_200?: number | null
-          ma_50?: number | null
-          macd_histogram?: number | null
-          macd_line?: number | null
-          macd_signal?: number | null
-          rsi_14?: number | null
-          symbol: string
-          volume_sma_20?: number | null
-        }
-        Update: {
-          atr_14?: number | null
-          bollinger_lower?: number | null
-          bollinger_middle?: number | null
-          bollinger_upper?: number | null
-          created_at?: string
-          date?: string
-          id?: string
-          ma_200?: number | null
-          ma_50?: number | null
-          macd_histogram?: number | null
-          macd_line?: number | null
-          macd_signal?: number | null
-          rsi_14?: number | null
-          symbol?: string
-          volume_sma_20?: number | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: true
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

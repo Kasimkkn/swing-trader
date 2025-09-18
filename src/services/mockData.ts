@@ -128,7 +128,7 @@ export const mockAnalyses: Record<string, StockAnalysis> = {
   'SUZLON': {
     symbol: 'SUZLON',
     companyName: 'Suzlon Energy Ltd.',
-    signal: 'AVOID',
+    signal: 'SELL',
     confidence: 82,
     currentPrice: 58,
     entryPrice: 0,
@@ -159,7 +159,7 @@ export const mockAnalyses: Record<string, StockAnalysis> = {
   'ZOMATO': {
     symbol: 'ZOMATO',
     companyName: 'Zomato Ltd.',
-    signal: 'AVOID',
+    signal: 'SELL',
     confidence: 76,
     currentPrice: 125,
     entryPrice: 0,
