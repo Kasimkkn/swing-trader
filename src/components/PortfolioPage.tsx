@@ -5,21 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PortfolioStocks } from '@/types/stock';
 import { Edit2, IndianRupee, PieChart, Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ConfirmationModal from './ui/confirmation-modal';
-
-interface Stock {
-    id: string;
-    symbol: string;
-    companyName: string;
-    quantity: number;
-    buyingPrice: number;
-    sellingPrice?: number;
-    status: 'hold' | 'sold';
-    buyDate: string;
-    sellDate?: string;
-}
 
 interface FormData {
     symbol: string;
@@ -32,13 +21,13 @@ interface FormData {
 }
 
 const PortfolioPage: React.FC = () => {
-    const [stocks, setStocks] = useState<Stock[]>([]);
+    const [stocks, setStocks] = useState<PortfolioStocks[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'sell'>('create');
-    const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
+    const [selectedStock, setSelectedStock] = useState<PortfolioStocks | null>(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-    const [stockToDelete, setStockToDelete] = useState<Stock | null>(null);
+    const [stockToDelete, setStockToDelete] = useState<PortfolioStocks | null>(null);
     const [formData, setFormData] = useState<FormData>({
         symbol: '',
         companyName: '',
@@ -85,7 +74,7 @@ const PortfolioPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const openEditModal = (stock: Stock) => {
+    const openEditModal = (stock: PortfolioStocks) => {
         setFormData({
             symbol: stock.symbol,
             companyName: stock.companyName,
@@ -100,7 +89,7 @@ const PortfolioPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const openSellModal = (stock: Stock) => {
+    const openSellModal = (stock: PortfolioStocks) => {
         setFormData({
             symbol: stock.symbol,
             companyName: stock.companyName,
@@ -118,7 +107,7 @@ const PortfolioPage: React.FC = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const newStock: Stock = {
+        const newStock: PortfolioStocks = {
             id: selectedStock?.id || Date.now().toString(),
             symbol: formData.symbol.toUpperCase(),
             companyName: formData.companyName,
