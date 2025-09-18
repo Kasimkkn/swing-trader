@@ -112,3 +112,19 @@ export interface StockResearch {
     risks: string[];
   };
 }
+
+export interface Stocks {
+  id: string;
+  symbol: string;
+  companyName: string;
+  indusrtry?: string;
+}
+
+export interface PortfolioStocks extends Stocks {
+  quantity: number;
+  buyingPrice: number;
+  sellingPrice?: number;
+  status: 'hold' | 'sold';
+  buyDate: string;
+  sellDate?: string;
+}
