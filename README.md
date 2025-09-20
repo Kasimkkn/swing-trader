@@ -4,6 +4,69 @@
 3. A portfolio page with all the active purchase, sold, profit, loss management Ui and history of stocks
 
 
+now we have to make a GLobal rule set so that all our stocks are islamic sharia compliant
+
+
+📌 Quick Checklist Before Buying a Stock
+ - Business sector is halal ✅
+- Non-permissible income < 5% ✅
+- Interest-based debt ≤ 30–33% ✅
+- Cash & interest-bearing securities ≤ 30–33% ✅
+- Accounts receivable ≤ 50% ✅
+
+✅ Shariah Screening Criteria for Stocks
+1. Core Business Activity Check
+
+- The primary business of the company must be halal (permissible).
+Not allowed (Haram sectors):
+- Conventional banking, insurance, and other interest-based financial services.
+
+- Alcohol, gambling, casinos, and adult entertainment.
+
+- Pork and non-halal food products.
+
+- Tobacco, drugs, and intoxicants.
+
+- Weapons and arms manufacturing (in many Shariah boards).
+
+- If a company’s main revenue comes from these sectors → ❌ Not Shariah-compliant.
+
+2. Non-Permissible Income Threshold
+
+Even if the main business is halal, some incidental income from haram sources is tolerated within limits.
+
+Rule:
+
+- Non-permissible income (like interest, haram investments, etc.) must be < 5% of total revenue.
+
+- If above 5% → ❌ Not Shariah-compliant.
+
+3. Debt Screening (Riba/Interest Rule)
+
+- Company should not be heavily dependent on interest-based borrowing.
+
+Rule:
+
+- Total interest-bearing debt / Total Assets ≤ 30–33% (varies by Shariah boards).
+- If debt exceeds the threshold → ❌ Not Shariah-compliant.
+
+4. Cash & Liquid Asset Screening
+
+To avoid trading in money (riba) instead of real assets:
+
+Rule:
+
+- Cash + Interest-bearing securities / Total Assets ≤ 30–33%.
+- Ensures company isn’t just sitting on interest-based income or excessive cash.
+
+5. Receivables & Liquidity Screening
+
+- High receivables may indicate reliance on credit/interest transactions.
+
+Rule:
+
+- Accounts receivable / Total Assets ≤ 50%.
+- Ensures company assets are not mostly debt-based transactions.git
 
 # Swing Trader
 ## ✓ 1 — High-level architecture

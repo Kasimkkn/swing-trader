@@ -8,6 +8,10 @@ import { RefreshCw, Sunrise, TrendingUp, Target, Shield, Clock } from 'lucide-re
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface StockRecommendation {
+  buyingPrice: string;
+  sellingPrice: string;
+  dma20: any;
+  dma30: any;
   symbol: string;
   companyName: string;
   signal: 'BUY' | 'SELL' | 'HOLD';
@@ -17,14 +21,7 @@ interface StockRecommendation {
   stopLoss: number;
   riskReward: string;
   reasons: string[];
-  technicals: {
-    currentPrice: number;
-    dma20: number;
-    dma30: number;
-    rsi: number;
-    volume: number;
-    avgVolume: number;
-  };
+  volume?: number;
 }
 
 interface RecommendationsData {
@@ -58,11 +55,11 @@ const MorningRecommendations = () => {
         setRecommendations(result.recommendations);
         setLastUpdated(result.generatedAt);
         setHasInitialLoad(true);
-        
+
         // Save to localStorage
         localStorage.setItem('morning-recommendations', JSON.stringify(result.recommendations));
         localStorage.setItem('morning-recommendations-time', result.generatedAt);
-        
+
         toast({
           title: "Recommendations Updated",
           description: `Found ${result.recommendations.length} stock opportunities`,
@@ -86,7 +83,7 @@ const MorningRecommendations = () => {
   useEffect(() => {
     const cachedData = localStorage.getItem('morning-recommendations');
     const cachedTime = localStorage.getItem('morning-recommendations-time');
-    
+
     if (cachedData && cachedTime) {
       setRecommendations(JSON.parse(cachedData));
       setLastUpdated(cachedTime);
@@ -222,14 +219,14 @@ const MorningRecommendations = () => {
                     <TrendingUp className="h-3 w-3" />
                     <span className="text-muted-foreground">Entry</span>
                   </div>
-                   <p className="font-bold">₹{stock.entryPrice}</p>
-                 </div>
-                 <div className="text-center p-2 bg-signal-buy-muted rounded">
-                   <div className="flex items-center justify-center gap-1 mb-1">
-                     <Target className="h-3 w-3" />
-                     <span className="text-muted-foreground">Target</span>
-                   </div>
-                   <p className="font-bold">₹{stock.targetPrice}</p>
+                  <p className="font-bold">₹{stock.buyingPrice}</p>
+                </div>
+                <div className="text-center p-2 bg-signal-buy-muted rounded">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Target className="h-3 w-3" />
+                    <span className="text-muted-foreground">Target</span>
+                  </div>
+                  <p className="font-bold">₹{stock.sellingPrice}</p>
                 </div>
                 <div className="text-center p-2 bg-signal-avoid-muted rounded">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -240,19 +237,16 @@ const MorningRecommendations = () => {
                 </div>
               </div>
 
-              {/* Technical Levels */}
-              {stock.technicals && (
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2 bg-muted rounded text-center">
-                    <p className="text-muted-foreground">20 DMA</p>
-                    <p className="font-medium">₹{stock.technicals.dma20?.toFixed(2) || 'N/A'}</p>
-                  </div>
-                  <div className="p-2 bg-muted rounded text-center">
-                    <p className="text-muted-foreground">30 DMA</p>
-                    <p className="font-medium">₹{stock.technicals.dma30?.toFixed(2) || 'N/A'}</p>
-                  </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 bg-muted rounded text-center">
+                  <p className="text-muted-foreground">20 DMA</p>
+                  <p className="font-medium">₹{stock.dma20?.toFixed(2) || 'N/A'}</p>
                 </div>
-              )}
+                <div className="p-2 bg-muted rounded text-center">
+                  <p className="text-muted-foreground">30 DMA</p>
+                  <p className="font-medium">₹{stock.dma30?.toFixed(2) || 'N/A'}</p>
+                </div>
+              </div>
 
               {/* Reasons */}
               <div>
@@ -265,17 +259,10 @@ const MorningRecommendations = () => {
                   ))}
                 </div>
               </div>
-
-               {/* Risk Reward */}
-               <div className="text-center pt-2 border-t border-border">
-                 <p className="text-xs text-muted-foreground">
-                   Risk:Reward: <span className="font-medium">{stock.riskReward}</span>
-                 </p>
-               </div>
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
       )}
 
       {recommendations.length === 0 && !isLoading && hasInitialLoad && (
