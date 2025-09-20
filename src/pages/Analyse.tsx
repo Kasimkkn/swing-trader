@@ -1,4 +1,4 @@
-import SearchInput from '@/components/SearchInput';
+import StockSearchInput from '@/components/StockSearchInput';
 import SignalCard from '@/components/SignalCard';
 import SimpleChart from '@/components/SimpleChart';
 import TechnicalPanel from '@/components/TechnicalPanel';
@@ -101,7 +101,7 @@ const Analyse = () => {
                 </div>
 
                 <div className="w-full max-w-md mb-4">
-                    <SearchInput onSearch={handleSearchAndAnalyze} isLoading={isLoading} />
+                    <StockSearchInput onSearch={handleSearchAndAnalyze} isLoading={isLoading} />
                 </div>
 
             </div>

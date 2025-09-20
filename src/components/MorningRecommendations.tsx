@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { RefreshCw, Sunrise, TrendingUp, Target, Shield, Clock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface StockRecommendation {
   symbol: string;
@@ -37,6 +38,7 @@ const MorningRecommendations = () => {
   const [recommendations, setRecommendations] = useState<StockRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
   const { toast } = useToast();
 
   const fetchRecommendations = async () => {
@@ -55,6 +57,12 @@ const MorningRecommendations = () => {
       if (result.success) {
         setRecommendations(result.recommendations);
         setLastUpdated(result.generatedAt);
+        setHasInitialLoad(true);
+        
+        // Save to localStorage
+        localStorage.setItem('morning-recommendations', JSON.stringify(result.recommendations));
+        localStorage.setItem('morning-recommendations-time', result.generatedAt);
+        
         toast({
           title: "Recommendations Updated",
           description: `Found ${result.recommendations.length} stock opportunities`,
@@ -74,9 +82,16 @@ const MorningRecommendations = () => {
     }
   };
 
-  // Auto-fetch on component mount
+  // Load cached data on component mount
   useEffect(() => {
-    fetchRecommendations();
+    const cachedData = localStorage.getItem('morning-recommendations');
+    const cachedTime = localStorage.getItem('morning-recommendations-time');
+    
+    if (cachedData && cachedTime) {
+      setRecommendations(JSON.parse(cachedData));
+      setLastUpdated(cachedTime);
+      setHasInitialLoad(true);
+    }
   }, []);
 
   const getSignalColor = (signal: string) => {
@@ -87,6 +102,39 @@ const MorningRecommendations = () => {
       default: return 'bg-muted text-muted-foreground';
     }
   };
+
+  const SkeletonCard = () => (
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-20 bg-muted" />
+            <Skeleton className="h-4 w-32 bg-muted" />
+          </div>
+          <Skeleton className="h-6 w-16 bg-muted" />
+        </div>
+        <div className="text-right">
+          <Skeleton className="h-4 w-12 bg-muted mb-1" />
+          <Skeleton className="h-6 w-8 bg-muted" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton className="h-16 bg-muted" />
+          <Skeleton className="h-16 bg-muted" />
+          <Skeleton className="h-16 bg-muted" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Skeleton className="h-12 bg-muted" />
+          <Skeleton className="h-12 bg-muted" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-6 bg-muted" />
+          <Skeleton className="h-6 bg-muted" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -126,8 +174,27 @@ const MorningRecommendations = () => {
       )}
 
       {/* Recommendations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {recommendations.map((stock, index) => (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
+        </div>
+      ) : !hasInitialLoad ? (
+        <Card className="bg-card border-border">
+          <CardContent className="text-center py-12">
+            <Sunrise className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-lg font-medium mb-2">No Recommendations Yet</p>
+            <p className="text-muted-foreground mb-4">
+              Click refresh to generate today's stock picks
+            </p>
+            <Button onClick={fetchRecommendations} disabled={isLoading}>
+              Generate Recommendations
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{recommendations.map((stock, index) => (
           <Card key={`${stock.symbol}-${index}`} className="bg-card border-border">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -209,8 +276,9 @@ const MorningRecommendations = () => {
           </Card>
         ))}
       </div>
+      )}
 
-      {recommendations.length === 0 && !isLoading && (
+      {recommendations.length === 0 && !isLoading && hasInitialLoad && (
         <Card className="bg-card border-border">
           <CardContent className="text-center py-12">
             <Sunrise className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

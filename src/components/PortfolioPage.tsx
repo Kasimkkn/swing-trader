@@ -9,6 +9,9 @@ import { PortfolioStocks } from '@/types/stock';
 import { Edit2, IndianRupee, PieChart, Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ConfirmationModal from './ui/confirmation-modal';
+import StockSearchInput from './StockSearchInput';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface FormData {
     symbol: string;
@@ -20,6 +23,13 @@ interface FormData {
     sellDate?: string;
 }
 
+interface Stock {
+    id: string;
+    symbol: string;
+    company_name: string;
+    current_price?: number;
+}
+
 const PortfolioPage: React.FC = () => {
     const [stocks, setStocks] = useState<PortfolioStocks[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +38,9 @@ const PortfolioPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
     const [stockToDelete, setStockToDelete] = useState<PortfolioStocks | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
     const [formData, setFormData] = useState<FormData>({
         symbol: '',
         companyName: '',
@@ -38,18 +51,53 @@ const PortfolioPage: React.FC = () => {
         sellDate: ''
     });
 
-    // Load data from localStorage on component mount
+    // Load portfolio data from Supabase on component mount
     useEffect(() => {
-        const savedStocks = localStorage.getItem('portfolio-stocks');
-        if (savedStocks) {
-            setStocks(JSON.parse(savedStocks));
-        }
+        fetchPortfolioStocks();
     }, []);
 
-    // Save to localStorage whenever stocks change
-    useEffect(() => {
-        localStorage.setItem('portfolio-stocks', JSON.stringify(stocks));
-    }, [stocks]);
+    const fetchPortfolioStocks = async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('portfolio')
+                .select(`
+                    *,
+                    stocks (
+                        id,
+                        symbol,
+                        company_name,
+                        current_price
+                    )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const portfolioStocks: PortfolioStocks[] = (data || []).map(item => ({
+                id: item.id,
+                symbol: item.stocks.symbol,
+                companyName: item.stocks.company_name,
+                quantity: item.quantity,
+                buyingPrice: typeof item.buying_price === 'string' ? parseFloat(item.buying_price) : item.buying_price,
+                sellingPrice: item.selling_price ? (typeof item.selling_price === 'string' ? parseFloat(item.selling_price) : item.selling_price) : undefined,
+                status: item.status as 'hold' | 'sold',
+                buyDate: item.buy_date,
+                sellDate: item.sell_date
+            }));
+
+            setStocks(portfolioStocks);
+        } catch (error) {
+            console.error('Error fetching portfolio:', error);
+            toast({
+                title: "Error",
+                description: "Failed to load portfolio data",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const resetForm = () => {
         setFormData({
@@ -104,31 +152,101 @@ const PortfolioPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleStockSelect = (stock: Stock) => {
+        setFormData(prev => ({
+            ...prev,
+            symbol: stock.symbol,
+            companyName: stock.company_name,
+            buyingPrice: stock.current_price?.toString() || prev.buyingPrice
+        }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
-        const newStock: PortfolioStocks = {
-            id: selectedStock?.id || Date.now().toString(),
-            symbol: formData.symbol.toUpperCase(),
-            companyName: formData.companyName,
-            quantity: parseInt(formData.quantity),
-            buyingPrice: parseFloat(formData.buyingPrice),
-            sellingPrice: formData.sellingPrice ? parseFloat(formData.sellingPrice) : undefined,
-            status: modalMode === 'sell' ? 'sold' : (selectedStock?.status || 'hold'),
-            buyDate: formData.buyDate,
-            sellDate: modalMode === 'sell' ? formData.sellDate : selectedStock?.sellDate
-        };
+        try {
+            let stockId: string;
 
-        if (modalMode === 'create') {
-            setStocks(prev => [...prev, newStock]);
-        } else {
-            setStocks(prev => prev.map(stock =>
-                stock.id === selectedStock?.id ? newStock : stock
-            ));
+            // First, check if stock exists in stocks table
+            const { data: existingStock, error: checkError } = await supabase
+                .from('stocks')
+                .select('id')
+                .eq('symbol', formData.symbol.toUpperCase())
+                .maybeSingle();
+
+            if (checkError) throw checkError;
+
+            if (existingStock) {
+                stockId = existingStock.id;
+            } else {
+                // Create new stock if it doesn't exist
+                const { data: newStock, error: createError } = await supabase
+                    .from('stocks')
+                    .insert({
+                        symbol: formData.symbol.toUpperCase(),
+                        company_name: formData.companyName,
+                        current_price: parseFloat(formData.buyingPrice)
+                    })
+                    .select('id')
+                    .single();
+
+                if (createError) throw createError;
+                stockId = newStock.id;
+            }
+
+            // Now handle portfolio operations
+            if (modalMode === 'create') {
+                const { error: insertError } = await supabase
+                    .from('portfolio')
+                    .insert({
+                        stock_id: stockId,
+                        quantity: parseInt(formData.quantity),
+                        buying_price: parseFloat(formData.buyingPrice),
+                        buy_date: formData.buyDate,
+                        status: 'hold'
+                    });
+
+                if (insertError) throw insertError;
+            } else if (selectedStock) {
+                const updateData: any = {
+                    quantity: parseInt(formData.quantity),
+                    buying_price: parseFloat(formData.buyingPrice),
+                    buy_date: formData.buyDate
+                };
+
+                if (modalMode === 'sell') {
+                    updateData.selling_price = parseFloat(formData.sellingPrice || '0');
+                    updateData.sell_date = formData.sellDate;
+                    updateData.status = 'sold';
+                }
+
+                const { error: updateError } = await supabase
+                    .from('portfolio')
+                    .update(updateData)
+                    .eq('id', selectedStock.id);
+
+                if (updateError) throw updateError;
+            }
+
+            toast({
+                title: "Success",
+                description: modalMode === 'create' ? "Stock added to portfolio" : "Stock updated successfully"
+            });
+
+            setIsModalOpen(false);
+            resetForm();
+            fetchPortfolioStocks(); // Refresh the data
+        } catch (error) {
+            console.error('Error:', error);
+            toast({
+                title: "Error",
+                description: "Failed to save stock. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setIsModalOpen(false);
-        resetForm();
     };
 
     const handleDelete = (id: string) => {
@@ -139,11 +257,32 @@ const PortfolioPage: React.FC = () => {
         }
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (stockToDelete) {
-            setStocks(prev => prev.filter(stock => stock.id !== stockToDelete.id));
-            setIsConfirmDeleteOpen(false);
-            setStockToDelete(null);
+            try {
+                const { error } = await supabase
+                    .from('portfolio')
+                    .delete()
+                    .eq('id', stockToDelete.id);
+
+                if (error) throw error;
+
+                toast({
+                    title: "Success",
+                    description: "Stock removed from portfolio"
+                });
+
+                setIsConfirmDeleteOpen(false);
+                setStockToDelete(null);
+                fetchPortfolioStocks(); // Refresh the data
+            } catch (error) {
+                console.error('Error:', error);
+                toast({
+                    title: "Error",
+                    description: "Failed to delete stock",
+                    variant: "destructive"
+                });
+            }
         }
     };
 
@@ -199,61 +338,80 @@ const PortfolioPage: React.FC = () => {
 
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <Card className="bg-white/5 border-white/10 border">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
-                            <PieChart className="w-4 h-4 mr-2" />
-                            Total Holdings
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{holdingStocks.length}</div>
-                        <p className="text-xs text-gray-400 mt-1">Active positions</p>
-                    </CardContent>
-                </Card>
+                {isLoading ? (
+                    Array.from({ length: 4 }).map((_, index) => (
+                        <Card key={index} className="bg-white/5 border-white/10 border">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
+                                    <div className="w-4 h-4 mr-2 bg-gray-400 rounded animate-pulse"></div>
+                                    <div className="w-20 h-4 bg-gray-400 rounded animate-pulse"></div>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="w-16 h-8 bg-gray-400 rounded animate-pulse mb-2"></div>
+                                <div className="w-24 h-3 bg-gray-400 rounded animate-pulse"></div>
+                            </CardContent>
+                        </Card>
+                    ))
+                ) : (
+                    <>
+                        <Card className="bg-white/5 border-white/10 border">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
+                                    <PieChart className="w-4 h-4 mr-2" />
+                                    Total Holdings
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{holdingStocks.length}</div>
+                                <p className="text-xs text-gray-400 mt-1">Active positions</p>
+                            </CardContent>
+                        </Card>
 
-                <Card className="bg-white/5 border-white/10 border">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
-                            <IndianRupee className="w-4 h-4 mr-2" />
-                            Total Investment
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(totalInvestment)}</div>
-                        <p className="text-xs text-gray-400 mt-1">Current holdings value</p>
-                    </CardContent>
-                </Card>
+                        <Card className="bg-white/5 border-white/10 border">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
+                                    <IndianRupee className="w-4 h-4 mr-2" />
+                                    Total Investment
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{formatCurrency(totalInvestment)}</div>
+                                <p className="text-xs text-gray-400 mt-1">Current holdings value</p>
+                            </CardContent>
+                        </Card>
 
-                <Card className="bg-white/5 border-white/10 border">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
-                            <TrendingUp className="w-4 h-4 mr-2" />
-                            Realized Gains
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className={`text-2xl font-bold ${totalRealizedGains >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(totalRealizedGains)}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">From sold positions</p>
-                    </CardContent>
-                </Card>
+                        <Card className="bg-white/5 border-white/10 border">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
+                                    <TrendingUp className="w-4 h-4 mr-2" />
+                                    Realized Gains
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-2xl font-bold ${totalRealizedGains >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatCurrency(totalRealizedGains)}
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">From sold positions</p>
+                            </CardContent>
+                        </Card>
 
-                <Card className="bg-white/5 border-white/10 border">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
-                            <TrendingDown className="w-4 h-4 mr-2" />
-                            Win Rate
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-400">
-                            {soldStocks.length > 0 ? Math.round((profitableStocks.length / soldStocks.length) * 100) : 0}%
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">Profitable trades</p>
-                    </CardContent>
-                </Card>
+                        <Card className="bg-white/5 border-white/10 border">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium text-gray-400 flex items-center">
+                                    <TrendingDown className="w-4 h-4 mr-2" />
+                                    Win Rate
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-blue-400">
+                                    {soldStocks.length > 0 ? Math.round((profitableStocks.length / soldStocks.length) * 100) : 0}%
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">Profitable trades</p>
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
             </div>
 
             {/* Tabs */}
@@ -273,7 +431,36 @@ const PortfolioPage: React.FC = () => {
                 {/* Holdings Tab */}
                 <TabsContent value="overview" className="mt-6">
                     <div className="grid gap-4">
-                        {holdingStocks.length === 0 ? (
+                        {isLoading ? (
+                            Array.from({ length: 3 }).map((_, index) => (
+                                <Card key={index} className="bg-white/5 border-white/10 border animate-pulse">
+                                    <CardContent className="p-6">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <div className="w-16 h-6 bg-gray-400 rounded"></div>
+                                                    <div className="w-12 h-5 bg-blue-400 rounded"></div>
+                                                </div>
+                                                <div className="w-32 h-4 bg-gray-400 rounded mb-3"></div>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                    {Array.from({ length: 4 }).map((_, i) => (
+                                                        <div key={i}>
+                                                            <div className="w-16 h-3 bg-gray-400 rounded mb-1"></div>
+                                                            <div className="w-12 h-4 bg-gray-400 rounded"></div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="w-12 h-8 bg-green-400 rounded"></div>
+                                                <div className="w-8 h-8 bg-gray-400 rounded"></div>
+                                                <div className="w-8 h-8 bg-red-400 rounded"></div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        ) : holdingStocks.length === 0 ? (
                             <Card className="bg-white/5 border-white/10 border">
                                 <CardContent className="p-8 text-center">
                                     <p className="text-gray-400 mb-4">No holdings found</p>
@@ -550,15 +737,25 @@ const PortfolioPage: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="symbol" className="text-white">Stock Symbol</Label>
-                            <Input
-                                id="symbol"
-                                value={formData.symbol}
-                                onChange={(e) => handleInputChange('symbol', e.target.value)}
-                                placeholder="e.g., AAPL"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-400"
-                                required
-                                disabled={modalMode === 'sell'}
-                            />
+                            {modalMode === 'create' ? (
+                                <StockSearchInput
+                                    onSearch={(symbol) => setFormData(prev => ({ ...prev, symbol }))}
+                                    onStockSelect={handleStockSelect}
+                                    isLoading={isSubmitting}
+                                    placeholder="Search stock symbol (e.g., RELIANCE, TCS)"
+                                    showSearchButton={false}
+                                />
+                            ) : (
+                                <Input
+                                    id="symbol"
+                                    value={formData.symbol}
+                                    onChange={(e) => handleInputChange('symbol', e.target.value)}
+                                    placeholder="e.g., AAPL"
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                                    required
+                                    disabled={modalMode === 'sell'}
+                                />
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -570,7 +767,7 @@ const PortfolioPage: React.FC = () => {
                                 placeholder="e.g., Apple Inc."
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                                 required
-                                disabled={modalMode === 'sell'}
+                                disabled={modalMode === 'sell' || isSubmitting}
                             />
                         </div>
                     </div>
@@ -664,8 +861,11 @@ const PortfolioPage: React.FC = () => {
                         <Button
                             type="submit"
                             className="flex-1 bg-white text-black hover:bg-gray-200"
+                            disabled={isSubmitting}
                         >
-                            {modalMode === 'create' ? 'Add Stock' : modalMode === 'edit' ? 'Update Stock' : 'Confirm Sale'}
+                            {isSubmitting ? 'Saving...' : 
+                             modalMode === 'create' ? 'Add Stock' : 
+                             modalMode === 'edit' ? 'Update Stock' : 'Confirm Sale'}
                         </Button>
                     </div>
                 </form>
