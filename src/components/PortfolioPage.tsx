@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PortfolioStocks } from '@/types/stock';
-import { Edit2, IndianRupee, PieChart, Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import ConfirmationModal from './ui/confirmation-modal';
-import StockSearchInput from './StockSearchInput';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { PortfolioStocks } from '@/types/stock';
+import { DollarSign, Edit2, IndianRupee, MoreVertical, PieChart, Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import FilterControls from './FilterControls';
+import StockSearchInput from './StockSearchInput';
+import ConfirmationModal from './ui/confirmation-modal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 interface FormData {
     symbol: string;
@@ -40,6 +42,14 @@ const PortfolioPage: React.FC = () => {
     const [stockToDelete, setStockToDelete] = useState<PortfolioStocks | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+    const [actionModalStock, setActionModalStock] = useState<PortfolioStocks | null>(null);
+    // Search and filter states
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState<'symbol' | 'companyName' | 'quantity' | 'buyingPrice' | 'buyDate' | 'profit'>('buyDate');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'hold' | 'sold'>('all');
+    const [priceRangeFilter, setPriceRangeFilter] = useState<{ min: string; max: string }>({ min: '', max: '' }); const [dateRangeFilter, setDateRangeFilter] = useState({ start: '', end: '' });
     const { toast } = useToast();
     const [formData, setFormData] = useState<FormData>({
         symbol: '',
@@ -111,6 +121,85 @@ const PortfolioPage: React.FC = () => {
         });
     };
 
+    // Filter and sort functions
+    const getFilteredAndSortedStocks = (stocksToFilter: PortfolioStocks[]) => {
+        let filtered = stocksToFilter;
+
+        // Search filter
+        if (searchTerm) {
+            filtered = filtered.filter(stock =>
+                stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                stock.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // Status filter
+        if (filterStatus !== 'all') {
+            filtered = filtered.filter(stock => stock.status === filterStatus);
+        }
+
+        // Price range filter
+        if (priceRangeFilter.min) {
+            filtered = filtered.filter(stock => stock.buyingPrice >= parseFloat(priceRangeFilter.min));
+        }
+        if (priceRangeFilter.max) {
+            filtered = filtered.filter(stock => stock.buyingPrice <= parseFloat(priceRangeFilter.max));
+        }
+
+        // Date range filter
+        if (dateRangeFilter.start) {
+            filtered = filtered.filter(stock => new Date(stock.buyDate) >= new Date(dateRangeFilter.start));
+        }
+        if (dateRangeFilter.end) {
+            filtered = filtered.filter(stock => new Date(stock.buyDate) <= new Date(dateRangeFilter.end));
+        }
+
+        // Sorting
+        filtered.sort((a, b) => {
+            let aValue: any, bValue: any;
+
+            switch (sortBy) {
+                case 'symbol':
+                    aValue = a.symbol;
+                    bValue = b.symbol;
+                    break;
+                case 'companyName':
+                    aValue = a.companyName;
+                    bValue = b.companyName;
+                    break;
+                case 'quantity':
+                    aValue = a.quantity;
+                    bValue = b.quantity;
+                    break;
+                case 'buyingPrice':
+                    aValue = a.buyingPrice;
+                    bValue = b.buyingPrice;
+                    break;
+                case 'buyDate':
+                    aValue = new Date(a.buyDate);
+                    bValue = new Date(b.buyDate);
+                    break;
+                case 'profit':
+                    aValue = a.status === 'sold' ? (a.sellingPrice! - a.buyingPrice) * a.quantity : 0;
+                    bValue = b.status === 'sold' ? (b.sellingPrice! - b.buyingPrice) * b.quantity : 0;
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+            }
+
+            if (sortOrder === 'asc') {
+                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+            } else {
+                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+            }
+        });
+
+        return filtered;
+    };
     const handleInputChange = (field: keyof FormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -290,6 +379,54 @@ const PortfolioPage: React.FC = () => {
         setIsConfirmDeleteOpen(false);
         setStockToDelete(null);
     };
+
+    const ActionModal = () => (
+        <ResponsiveModal
+            isOpen={isActionModalOpen}
+            onClose={() => {
+                setIsActionModalOpen(false);
+                setActionModalStock(null);
+            }}
+            title=""
+        >
+            <div className="space-y-2">
+                {actionModalStock?.status === 'hold' && (
+                    <button
+                        onClick={() => {
+                            openSellModal(actionModalStock);
+                            setIsActionModalOpen(false);
+                        }}
+                        className="w-full p-3 text-left hover:bg-white/5 rounded-lg transition-colors flex items-center"
+                    >
+                        <DollarSign className="mr-3 h-5 w-5 text-green-400" />
+                        <span className="text-white">Sell</span>
+                    </button>
+                )}
+
+                <button
+                    onClick={() => {
+                        openEditModal(actionModalStock);
+                        setIsActionModalOpen(false);
+                    }}
+                    className="w-full p-3 text-left hover:bg-white/5 rounded-lg transition-colors flex items-center"
+                >
+                    <Edit2 className="mr-3 h-5 w-5 text-blue-400" />
+                    <span className="text-white">Edit</span>
+                </button>
+
+                <button
+                    onClick={() => {
+                        handleDelete(actionModalStock.id);
+                        setIsActionModalOpen(false);
+                    }}
+                    className="w-full p-3 text-left hover:bg-red-500/10 rounded-lg transition-colors flex items-center"
+                >
+                    <Trash2 className="mr-3 h-5 w-5 text-red-400" />
+                    <span className="text-red-400">Delete</span>
+                </button>
+            </div>
+        </ResponsiveModal>
+    );
     // Calculate portfolio metrics
     const holdingStocks = stocks.filter(stock => stock.status === 'hold');
     const soldStocks = stocks.filter(stock => stock.status === 'sold');
@@ -414,8 +551,22 @@ const PortfolioPage: React.FC = () => {
                 )}
             </div>
 
+            <FilterControls
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                sortOrder={sortOrder}
+                setSortOrder={setSortOrder}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                priceRangeFilter={priceRangeFilter}
+                setPriceRangeFilter={setPriceRangeFilter}
+                dateRangeFilter={dateRangeFilter}
+                setDateRangeFilter={setDateRangeFilter}
+            />
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full pb-10">
                 <TabsList className="grid w-full grid-cols-3 bg-white/5 border-white/10">
                     <TabsTrigger value="overview" className="data-[state=active]:bg-white/10">
                         Holdings
@@ -430,7 +581,7 @@ const PortfolioPage: React.FC = () => {
 
                 {/* Holdings Tab */}
                 <TabsContent value="overview" className="mt-6">
-                    <div className="grid gap-4">
+                    <div className="grid md:grid-cols-3 gap-4">
                         {isLoading ? (
                             Array.from({ length: 3 }).map((_, index) => (
                                 <Card key={index} className="bg-white/5 border-white/10 border animate-pulse">
@@ -460,7 +611,7 @@ const PortfolioPage: React.FC = () => {
                                     </CardContent>
                                 </Card>
                             ))
-                        ) : holdingStocks.length === 0 ? (
+                        ) : getFilteredAndSortedStocks(holdingStocks).length === 0 ? (
                             <Card className="bg-white/5 border-white/10 border">
                                 <CardContent className="p-8 text-center">
                                     <p className="text-gray-400 mb-4">No holdings found</p>
@@ -470,9 +621,9 @@ const PortfolioPage: React.FC = () => {
                                 </CardContent>
                             </Card>
                         ) : (
-                            holdingStocks.map((stock) => (
+                            getFilteredAndSortedStocks(holdingStocks).map((stock) => (
                                 <Card key={stock.id} className="bg-white/5 border-white/10 border hover:bg-white/10 transition-colors">
-                                    <CardContent className="p-6">
+                                    <CardContent className="p-6 relative">
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3 mb-2">
@@ -501,29 +652,17 @@ const PortfolioPage: React.FC = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className='absolute top-4 right-4 z-10'>
                                                 <Button
-                                                    onClick={() => openSellModal(stock)}
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 p-0 text-white"
+                                                    onClick={() => {
+                                                        setActionModalStock(stock);
+                                                        setIsActionModalOpen(true);
+                                                    }}
                                                 >
-                                                    Sell
-                                                </Button>
-                                                <Button
-                                                    onClick={() => openEditModal(stock)}
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-white/20 hover:bg-white/5"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </Button>
-                                                <Button
-                                                    onClick={() => handleDelete(stock.id)}
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <MoreVertical className="h-5 w-5" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -536,22 +675,22 @@ const PortfolioPage: React.FC = () => {
 
                 {/* Sold Stocks Tab */}
                 <TabsContent value="sold" className="mt-6">
-                    <div className="grid gap-4">
-                        {soldStocks.length === 0 ? (
+                    <div className="grid md:grid-cols-3 gap-4">
+                        {getFilteredAndSortedStocks(soldStocks).length === 0 ? (
                             <Card className="bg-white/5 border-white/10 border">
                                 <CardContent className="p-8 text-center">
                                     <p className="text-gray-400">No sold stocks found</p>
                                 </CardContent>
                             </Card>
                         ) : (
-                            soldStocks.map((stock) => {
+                            getFilteredAndSortedStocks(soldStocks).map((stock) => {
                                 const profit = (stock.sellingPrice - stock.buyingPrice) * stock.quantity;
                                 const profitPercentage = ((stock.sellingPrice - stock.buyingPrice) / stock.buyingPrice) * 100;
                                 const isProfit = profit > 0;
 
                                 return (
                                     <Card key={stock.id} className="bg-white/5 border-white/10 border hover:bg-white/10 transition-colors">
-                                        <CardContent className="p-6">
+                                        <CardContent className="p-6 relative">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-2">
@@ -591,22 +730,17 @@ const PortfolioPage: React.FC = () => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-2">
+                                                    <div className='absolute top-4 right-4 z-10'>
                                                         <Button
-                                                            onClick={() => openEditModal(stock)}
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="border-white/20 hover:bg-white/5"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 p-0 text-white"
+                                                            onClick={() => {
+                                                                setActionModalStock(stock);
+                                                                setIsActionModalOpen(true);
+                                                            }}
                                                         >
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() => handleDelete(stock.id)}
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <MoreVertical className="h-5 w-5" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -618,23 +752,24 @@ const PortfolioPage: React.FC = () => {
                         )}
                     </div>
                 </TabsContent>
+
                 <TabsContent value="history" className="mt-6">
-                    <div className="grid gap-4">
-                        {stocks.length === 0 ? (
+                    <div className="grid md:grid-cols-3 gap-4">
+                        {getFilteredAndSortedStocks(stocks).length === 0 ? (
                             <Card className="bg-white/5 border-white/10 border">
                                 <CardContent className="p-8 text-center">
                                     <p className="text-gray-400">No transaction history found</p>
                                 </CardContent>
                             </Card>
                         ) : (
-                            stocks.map((stock) => {
+                            getFilteredAndSortedStocks(stocks).map((stock) => {
                                 const profit = stock.status === 'sold' ? (stock.sellingPrice! - stock.buyingPrice) * stock.quantity : 0;
                                 const profitPercentage = stock.status === 'sold' ? ((stock.sellingPrice! - stock.buyingPrice) / stock.buyingPrice) * 100 : 0;
                                 const isProfit = profit > 0;
 
                                 return (
                                     <Card key={stock.id} className="bg-white/5 border-white/10 border hover:bg-white/10 transition-colors">
-                                        <CardContent className="p-6">
+                                        <CardContent className="p-6 relative">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-2">
@@ -690,31 +825,17 @@ const PortfolioPage: React.FC = () => {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    {stock.status === 'hold' && (
-                                                        <Button
-                                                            onClick={() => openSellModal(stock)}
-                                                            size="sm"
-                                                            className="bg-green-600 hover:bg-green-700 text-white"
-                                                        >
-                                                            Sell
-                                                        </Button>
-                                                    )}
+                                                <div className='absolute top-4 right-4 z-10'>
                                                     <Button
-                                                        onClick={() => openEditModal(stock)}
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="border-white/20 hover:bg-white/5"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 p-0 text-white"
+                                                        onClick={() => {
+                                                            setActionModalStock(stock);
+                                                            setIsActionModalOpen(true);
+                                                        }}
                                                     >
-                                                        <Edit2 className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        onClick={() => handleDelete(stock.id)}
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <MoreVertical className="h-5 w-5" />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -863,9 +984,9 @@ const PortfolioPage: React.FC = () => {
                             className="flex-1 bg-white text-black hover:bg-gray-200"
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? 'Saving...' : 
-                             modalMode === 'create' ? 'Add Stock' : 
-                             modalMode === 'edit' ? 'Update Stock' : 'Confirm Sale'}
+                            {isSubmitting ? 'Saving...' :
+                                modalMode === 'create' ? 'Add Stock' :
+                                    modalMode === 'edit' ? 'Update Stock' : 'Confirm Sale'}
                         </Button>
                     </div>
                 </form>
@@ -881,6 +1002,7 @@ const PortfolioPage: React.FC = () => {
                 confirmText="Delete"
                 cancelText="Cancel"
             />
+            <ActionModal />
         </div>
     );
 };

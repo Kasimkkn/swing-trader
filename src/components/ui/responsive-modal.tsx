@@ -29,9 +29,11 @@ const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
         return (
             <Drawer open={isOpen} onOpenChange={handleOpenChange}>
                 <DrawerContent className="bg-background border-border max-h-[90vh]">
-                    <DrawerHeader>
-                        <DrawerTitle className="text-white font-bricola">{title}</DrawerTitle>
-                    </DrawerHeader>
+                    {title && (
+                        <DrawerHeader>
+                            <DrawerTitle className="text-white font-bricola">{title}</DrawerTitle>
+                        </DrawerHeader>
+                    )}
                     <div className="p-6 overflow-y-auto flex-1">
                         {children}
                     </div>
@@ -43,9 +45,11 @@ const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="bg-background border-border max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="text-white font-bricola">{title}</DialogTitle>
-                </DialogHeader>
+                {title && (
+                    <DialogHeader>
+                        <DialogTitle className="text-white font-bricola">{title}</DialogTitle>
+                    </DialogHeader>
+                )}
                 <div className="space-y-4">
                     {children}
                 </div>
