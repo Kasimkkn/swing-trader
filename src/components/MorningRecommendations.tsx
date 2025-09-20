@@ -174,16 +174,18 @@ const MorningRecommendations = () => {
               </div>
 
               {/* Technical Levels */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                 <div className="p-2 bg-muted rounded text-center">
-                   <p className="text-muted-foreground">20 DMA</p>
-                   <p className="font-medium">₹{stock.technicals.dma20.toFixed(2)}</p>
-                 </div>
-                 <div className="p-2 bg-muted rounded text-center">
-                   <p className="text-muted-foreground">30 DMA</p>
-                   <p className="font-medium">₹{stock.technicals.dma30.toFixed(2)}</p>
-                 </div>
-              </div>
+              {stock.technicals && (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-muted rounded text-center">
+                    <p className="text-muted-foreground">20 DMA</p>
+                    <p className="font-medium">₹{stock.technicals.dma20?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                  <div className="p-2 bg-muted rounded text-center">
+                    <p className="text-muted-foreground">30 DMA</p>
+                    <p className="font-medium">₹{stock.technicals.dma30?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Reasons */}
               <div>
