@@ -536,10 +536,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get stocks with sector information
+    // Get stocks with industry_category information
     const { data: stocks, error: stocksError } = await supabase
       .from('stocks')
-      .select('id, symbol, company_name, sector')
+      .select('id, symbol, company_name, industry_category')
       .limit(50);
 
     if (stocksError) {
