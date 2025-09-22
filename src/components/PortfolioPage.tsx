@@ -7,13 +7,12 @@ import ResponsiveModal from '@/components/ui/responsive-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PortfolioStocks } from '@/types/stock';
+import { PortfolioStocks, Stock } from '@/types/stock';
 import { DollarSign, Edit2, IndianRupee, MoreVertical, PieChart, Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import FilterControls from './FilterControls';
 import StockSearchInput from './StockSearchInput';
 import ConfirmationModal from './ui/confirmation-modal';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 interface FormData {
     symbol: string;
@@ -25,12 +24,6 @@ interface FormData {
     sellDate?: string;
 }
 
-interface Stock {
-    id: string;
-    symbol: string;
-    company_name: string;
-    current_price?: number;
-}
 
 const PortfolioPage: React.FC = () => {
     const [stocks, setStocks] = useState<PortfolioStocks[]>([]);
