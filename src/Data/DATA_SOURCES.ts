@@ -267,7 +267,6 @@ export const SECTOR_MAPPING = {
     'Construction Materials': 'Construction',
     'Power': 'Power',
     'Textiles': 'Textiles',
-    'Media Entertainment & Publication': 'Media'
 };
 
 // Error handling configuration
