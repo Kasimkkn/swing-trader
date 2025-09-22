@@ -1,32 +1,27 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  RefreshCw,
-  Sunrise,
-  TrendingUp,
-  Target,
-  Shield,
-  Clock,
   Activity,
+  AlertCircle,
   BarChart3,
   ChevronDown,
   ChevronUp,
-  AlertCircle,
-  CheckCircle2,
   Filter,
-  Zap,
-  DollarSign,
-  Percent,
-  Volume2
+  RefreshCw,
+  Shield,
+  Sunrise,
+  Target,
+  TrendingUp,
+  Volume2,
+  Zap
 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
+import { useEffect, useState } from 'react';
 
 interface StockRecommendation {
   symbol: string;
@@ -102,6 +97,7 @@ const MorningRecommendations = () => {
 
       const result = data as RecommendationsResponse;
 
+      console.log("result", result)
       if (result.success) {
         setRecommendations(result.allRecommendations || []);
         setTopPicks(result.topPicks || []);
@@ -478,15 +474,13 @@ const MorningRecommendations = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-            <Sunrise className="h-6 w-6 text-white" />
-          </div>
+          <Sunrise className="h-6 w-6 text-white" />
           <div>
-            <h2 className="text-xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h2 className="text-xl lg:text-3xl font-bold text-white">
               Enhanced Stock Picks
             </h2>
             <p className="text-muted-foreground text-sm lg:text-base">
@@ -497,8 +491,8 @@ const MorningRecommendations = () => {
         <Button
           onClick={fetchRecommendations}
           disabled={isLoading}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-          size="lg"
+          className=""
+          size="default"
         >
           {isLoading ? (
             <RefreshCw className="h-4 w-4 animate-spin mr-2" />
@@ -511,38 +505,26 @@ const MorningRecommendations = () => {
 
       {/* Summary Stats */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-blue-200">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{summary.totalAnalyzed}</p>
-              <p className="text-xs text-muted-foreground">Stocks Analyzed</p>
-            </div>
-          </Card>
-          <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/30 border-green-200">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{summary.buySignals}</p>
               <p className="text-xs text-muted-foreground">Buy Signals</p>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/30 border-red-200">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{summary.sellSignals}</p>
               <p className="text-xs text-muted-foreground">Sell Signals</p>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/30 border-emerald-200">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-emerald-600">{summary.halalRecommendations}</p>
               <p className="text-xs text-muted-foreground">Halal Certified</p>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 border-purple-200">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">{summary.diversifiedRecommendations}</p>
-              <p className="text-xs text-muted-foreground">Diversified Picks</p>
-            </div>
-          </Card>
-          <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/30 border-orange-200">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-orange-600">{topPicks.length}</p>
               <p className="text-xs text-muted-foreground">Top Picks</p>
@@ -551,38 +533,6 @@ const MorningRecommendations = () => {
         </div>
       )}
 
-      {/* Features Display */}
-      {features.length > 0 && (
-        <Card className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/50 dark:to-gray-950/50">
-          <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            Enhanced Features Active
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
-            {features.map((feature, idx) => (
-              <p key={idx} className="text-muted-foreground flex items-center gap-2">
-                <span className="text-green-600">✓</span>
-                {feature.replace('✅ ', '')}
-              </p>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Last Updated */}
-      {lastUpdated && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-          <Clock className="h-4 w-4" />
-          Last updated: {new Date(lastUpdated).toLocaleString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Asia/Kolkata'
-          })} IST
-        </div>
-      )}
 
       {/* Tabs for different views */}
       {hasInitialLoad && !isLoading && (
