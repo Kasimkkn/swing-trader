@@ -36,7 +36,7 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Current Price</span>
             <span className="font-mono font-semibold text-foreground">
-              ₹{technicals.price.toLocaleString()}
+              ₹{technicals.price.toFixed(2).toLocaleString()}
             </span>
           </div>
 
@@ -44,7 +44,7 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
             <span className="text-sm text-muted-foreground">50 DMA</span>
             <span className={`font-mono font-semibold ${technicals.price > technicals.dma50 ? 'text-signal-buy' : 'text-signal-avoid'
               }`}>
-              ₹{technicals.dma50.toLocaleString()}
+              ₹{technicals.dma50.toFixed(2).toLocaleString()}
             </span>
           </div>
         </div>
@@ -53,7 +53,7 @@ const TechnicalPanel = ({ technicals }: TechnicalPanelProps) => {
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">RSI (14)</span>
             <span className={`font-mono font-semibold ${getRsiColor(technicals.rsi14)}`}>
-              {technicals.rsi14}
+              {technicals.rsi14.toFixed(1)}
             </span>
           </div>
 

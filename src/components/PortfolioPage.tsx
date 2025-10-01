@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import FilterControls from './FilterControls';
 import StockSearchInput from './StockSearchInput';
 import ConfirmationModal from './ui/confirmation-modal';
+import { Dialog, DialogContent } from './ui/dialog';
 
 interface FormData {
     symbol: string;
@@ -295,7 +296,7 @@ const PortfolioPage: React.FC = () => {
                 if (existingPortfolio) {
                     // Update existing holding - calculate new average price
                     const oldQuantity = existingPortfolio.quantity;
-                    const oldPrice = typeof existingPortfolio.buying_price === 'string' ? 
+                    const oldPrice = typeof existingPortfolio.buying_price === 'string' ?
                         parseFloat(existingPortfolio.buying_price) : existingPortfolio.buying_price;
                     const totalQuantity = oldQuantity + newQuantity;
                     const averagePrice = ((oldQuantity * oldPrice) + (newQuantity * newPrice)) / totalQuantity;
@@ -404,8 +405,8 @@ const PortfolioPage: React.FC = () => {
 
             toast({
                 title: "Success",
-                description: modalMode === 'create' ? "Stock added to portfolio" : 
-                            modalMode === 'sell' ? "Stock sold successfully" : "Stock updated successfully"
+                description: modalMode === 'create' ? "Stock added to portfolio" :
+                    modalMode === 'sell' ? "Stock sold successfully" : "Stock updated successfully"
             });
 
             setIsModalOpen(false);
@@ -472,51 +473,53 @@ const PortfolioPage: React.FC = () => {
     };
 
     const ActionModal = () => (
-        <ResponsiveModal
-            isOpen={isActionModalOpen}
-            onClose={() => {
+        <Dialog
+            open={isActionModalOpen}
+            onOpenChange={() => {
                 setIsActionModalOpen(false);
                 setActionModalStock(null);
             }}
-            title=""
+
         >
-            <div className="space-y-2">
-                {actionModalStock?.status === 'hold' && (
+            <DialogContent className='max-w-sm w-full p-1 bg-[#262626]'>
+                <div className="space-y-2">
+                    {actionModalStock?.status === 'hold' && (
+                        <button
+                            onClick={() => {
+                                openSellModal(actionModalStock);
+                                setIsActionModalOpen(false);
+                            }}
+                            className="w-full p-3 text-left hover:bg-white/5 transition-colors flex items-center border-b border-white/10"
+                        >
+                            <DollarSign className="mr-3 h-5 w-5 text-green-400" />
+                            <span className="text-white">Sell</span>
+                        </button>
+                    )}
+
                     <button
                         onClick={() => {
-                            openSellModal(actionModalStock);
+                            openEditModal(actionModalStock);
                             setIsActionModalOpen(false);
                         }}
-                        className="w-full p-3 text-left hover:bg-white/5 rounded-lg transition-colors flex items-center"
+                        className="w-full p-3 text-left hover:bg-white/5 transition-colors flex items-center border-b border-white/10"
                     >
-                        <DollarSign className="mr-3 h-5 w-5 text-green-400" />
-                        <span className="text-white">Sell</span>
+                        <Edit2 className="mr-3 h-5 w-5 text-blue-400" />
+                        <span className="text-white">Edit</span>
                     </button>
-                )}
 
-                <button
-                    onClick={() => {
-                        openEditModal(actionModalStock);
-                        setIsActionModalOpen(false);
-                    }}
-                    className="w-full p-3 text-left hover:bg-white/5 rounded-lg transition-colors flex items-center"
-                >
-                    <Edit2 className="mr-3 h-5 w-5 text-blue-400" />
-                    <span className="text-white">Edit</span>
-                </button>
-
-                <button
-                    onClick={() => {
-                        handleDelete(actionModalStock.id);
-                        setIsActionModalOpen(false);
-                    }}
-                    className="w-full p-3 text-left hover:bg-red-500/10 rounded-lg transition-colors flex items-center"
-                >
-                    <Trash2 className="mr-3 h-5 w-5 text-red-400" />
-                    <span className="text-red-400">Delete</span>
-                </button>
-            </div>
-        </ResponsiveModal>
+                    <button
+                        onClick={() => {
+                            handleDelete(actionModalStock.id);
+                            setIsActionModalOpen(false);
+                        }}
+                        className="w-full p-3 text-left hover:bg-red-500/10 transition-colors flex items-center "
+                    >
+                        <Trash2 className="mr-3 h-5 w-5 text-red-400" />
+                        <span className="text-red-400">Delete</span>
+                    </button>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
     // Calculate portfolio metrics
     const holdingStocks = stocks.filter(stock => stock.status === 'hold');
