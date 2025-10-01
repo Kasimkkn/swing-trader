@@ -39,19 +39,6 @@ interface StockRecommendation {
   };
 }
 
-interface TechnicalIndicators {
-  rsi: number;
-  atr: number;
-  ema20: number;
-  ema50: number;
-  supertrend: number;
-  supertrendSignal: 'BUY' | 'SELL';
-  macd: number;
-  macdSignal: number;
-  bbUpper: number;
-  bbLower: number;
-  volatility: number;
-}
 
 // Proper RSI calculation using Wilder's exponential smoothing
 function calculateRSI(prices: number[], period: number = 14): number {
@@ -193,7 +180,7 @@ async function fetchYahooDataEnhanced(symbol: string) {
 
       // Try v8 chart API first (more reliable)
       const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?period1=${period1}&period2=${period2}&interval=1d`;
-      
+
       const response = await fetch(chartUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -204,7 +191,7 @@ async function fetchYahooDataEnhanced(symbol: string) {
 
       if (!response.ok) {
         console.log(`Chart API failed with status ${response.status}, trying download endpoint`);
-        
+
         // Fallback to download endpoint
         const downloadUrl = `https://query1.finance.yahoo.com/v7/finance/download/${symbol}.NS?period1=${period1}&period2=${period2}&interval=1d&events=history`;
         const downloadResponse = await fetch(downloadUrl, {
@@ -298,14 +285,14 @@ async function fetchYahooDataEnhanced(symbol: string) {
 
       // Process JSON chart data
       const jsonData = await response.json();
-      
+
       if (!jsonData.chart?.result?.[0]) {
         throw new Error('Invalid chart data structure');
       }
 
       const result = jsonData.chart.result[0];
       const quotes = result.indicators?.quote?.[0];
-      
+
       if (!quotes || !result.timestamp) {
         throw new Error('Missing quotes or timestamp data');
       }
@@ -321,9 +308,9 @@ async function fetchYahooDataEnhanced(symbol: string) {
         const close = quotes.close?.[i];
         const volume = quotes.volume?.[i];
 
-        if (high && low && close && volume && 
-            !isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(volume) &&
-            high > 0 && low > 0 && close > 0 && volume > 0) {
+        if (high && low && close && volume &&
+          !isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(volume) &&
+          high > 0 && low > 0 && close > 0 && volume > 0) {
           highs.push(high);
           lows.push(low);
           prices.push(close);
