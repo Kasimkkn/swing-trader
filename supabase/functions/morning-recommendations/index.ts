@@ -181,39 +181,133 @@ function calculateVolatility(prices: number[], period: number = 20): number {
 }
 
 async function fetchYahooDataEnhanced(symbol: string) {
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 1000; // 1 second
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY = 1500;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       console.log(`Fetching data for ${symbol} (attempt ${attempt + 1})`);
 
-      const period1 = Math.floor((Date.now() - 180 * 24 * 60 * 60 * 1000) / 1000); // 6 months
+      const period1 = Math.floor((Date.now() - 180 * 24 * 60 * 60 * 1000) / 1000);
       const period2 = Math.floor(Date.now() / 1000);
 
-      const response = await fetch(
-        `https://query1.finance.yahoo.com/v7/finance/download/${symbol}.NS?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
+      // Try v8 chart API first (more reliable)
+      const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?period1=${period1}&period2=${period2}&interval=1d`;
+      
+      const response = await fetch(chartUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9'
         }
-      );
+      });
 
       if (!response.ok) {
-        if (attempt < MAX_RETRIES - 1) {
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (attempt + 1)));
-          continue;
+        console.log(`Chart API failed with status ${response.status}, trying download endpoint`);
+        
+        // Fallback to download endpoint
+        const downloadUrl = `https://query1.finance.yahoo.com/v7/finance/download/${symbol}.NS?period1=${period1}&period2=${period2}&interval=1d&events=history`;
+        const downloadResponse = await fetch(downloadUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/csv'
+          }
+        });
+
+        if (!downloadResponse.ok) {
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (attempt + 1)));
+            continue;
+          }
+          throw new Error(`Yahoo Finance API error: ${downloadResponse.status}`);
         }
-        throw new Error(`Yahoo Finance API error: ${response.status}`);
+
+        // Process CSV data
+        const csvData = await downloadResponse.text();
+
+        const lines = csvData.split('\n').slice(1).filter(line => line.trim() && !line.includes('null'));
+
+        if (lines.length < 50) {
+          console.log(`Insufficient CSV data for ${symbol}: ${lines.length} days`);
+          return null;
+        }
+
+        const prices: number[] = [];
+        const highs: number[] = [];
+        const lows: number[] = [];
+        const volumes: number[] = [];
+
+        for (const line of lines) {
+          const cols = line.split(',');
+          if (cols.length >= 7) {
+            const high = parseFloat(cols[2]);
+            const low = parseFloat(cols[3]);
+            const close = parseFloat(cols[4]);
+            const volume = parseInt(cols[6]);
+
+            if (!isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(volume) &&
+              high > 0 && low > 0 && close > 0 && volume > 0) {
+              highs.push(high);
+              lows.push(low);
+              prices.push(close);
+              volumes.push(volume);
+            }
+          }
+        }
+
+        if (prices.length < 50) {
+          console.log(`Not enough valid CSV data points for ${symbol}: ${prices.length}`);
+          return null;
+        }
+
+        const currentPrice = prices[prices.length - 1];
+        const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+
+        const rsi = calculateRSI(prices);
+        const atr = calculateATR(highs, lows, prices);
+        const ema20 = calculateEMA(prices, 20);
+        const ema50 = calculateEMA(prices, 50);
+        const supertrend = calculateSuperTrend(highs, lows, prices, atr);
+        const macd = calculateMACD(prices);
+        const bb = calculateBollingerBands(prices);
+        const volatility = calculateVolatility(prices);
+
+        return {
+          currentPrice,
+          highs,
+          lows,
+          prices,
+          volumes,
+          avgVolume,
+          currentVolume: volumes[volumes.length - 1],
+          technicals: {
+            rsi,
+            atr,
+            ema20,
+            ema50,
+            supertrend: supertrend.value,
+            supertrendSignal: supertrend.signal,
+            macd: macd.macd,
+            macdSignal: macd.signal,
+            bbUpper: bb.upper,
+            bbLower: bb.lower,
+            volatility
+          }
+        };
       }
 
-      const csvData = await response.text();
-      const lines = csvData.split('\n').slice(1).filter(line => line.trim() && !line.includes('null'));
+      // Process JSON chart data
+      const jsonData = await response.json();
+      
+      if (!jsonData.chart?.result?.[0]) {
+        throw new Error('Invalid chart data structure');
+      }
 
-      if (lines.length < 50) {
-        console.log(`Insufficient data for ${symbol}: ${lines.length} days`);
-        return null;
+      const result = jsonData.chart.result[0];
+      const quotes = result.indicators?.quote?.[0];
+      
+      if (!quotes || !result.timestamp) {
+        throw new Error('Missing quotes or timestamp data');
       }
 
       const prices: number[] = [];
@@ -221,21 +315,19 @@ async function fetchYahooDataEnhanced(symbol: string) {
       const lows: number[] = [];
       const volumes: number[] = [];
 
-      for (const line of lines) {
-        const cols = line.split(',');
-        if (cols.length >= 7) {
-          const high = parseFloat(cols[2]);
-          const low = parseFloat(cols[3]);
-          const close = parseFloat(cols[4]);
-          const volume = parseInt(cols[6]);
+      for (let i = 0; i < result.timestamp.length; i++) {
+        const high = quotes.high?.[i];
+        const low = quotes.low?.[i];
+        const close = quotes.close?.[i];
+        const volume = quotes.volume?.[i];
 
-          if (!isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(volume) &&
+        if (high && low && close && volume && 
+            !isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(volume) &&
             high > 0 && low > 0 && close > 0 && volume > 0) {
-            highs.push(high);
-            lows.push(low);
-            prices.push(close);
-            volumes.push(volume);
-          }
+          highs.push(high);
+          lows.push(low);
+          prices.push(close);
+          volumes.push(volume);
         }
       }
 

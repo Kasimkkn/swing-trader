@@ -227,6 +227,63 @@ async function fetchYahooFinanceData(symbol: string) {
   }
 }
 
+async function fetchAndSaveStockDetails(symbol: string) {
+  try {
+    const yahooSymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
+    
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Failed to fetch stock details for ${yahooSymbol}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const result = data.chart?.result?.[0];
+    
+    if (!result || !result.meta) {
+      console.error('Invalid stock data structure');
+      return null;
+    }
+
+    const meta = result.meta;
+    const currentPrice = meta.regularMarketPrice || meta.previousClose;
+    
+    const stockDetails = {
+      symbol: symbol.toUpperCase(),
+      company_name: meta.longName || meta.shortName || symbol.toUpperCase(),
+      current_price: currentPrice,
+      industry_category: meta.industry || meta.sector || 'Unknown'
+    };
+
+    // Save to stocks table
+    const { data: savedStock, error } = await supabase
+      .from('stocks')
+      .upsert(stockDetails, { onConflict: 'symbol' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving stock to database:', error);
+      return null;
+    }
+
+    console.log(`Successfully saved ${symbol} to stocks table`);
+    return savedStock;
+  } catch (error) {
+    console.error('Error in fetchAndSaveStockDetails:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -241,6 +298,18 @@ serve(async (req) => {
     }
 
     console.log(`Analyzing stock: ${symbol}`);
+
+    // Check if stock exists in stocks table, if not fetch and save it
+    const { data: existingStock } = await supabase
+      .from('stocks')
+      .select('*')
+      .eq('symbol', symbol.toUpperCase())
+      .maybeSingle();
+
+    if (!existingStock) {
+      console.log(`Stock ${symbol} not found in database, fetching details...`);
+      await fetchAndSaveStockDetails(symbol);
+    }
 
     // Check if we have recent analysis (within 4 hours)
     const { data: existingAnalysis } = await supabase
