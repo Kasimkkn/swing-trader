@@ -1,32 +1,27 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  RefreshCw,
-  Sunrise,
-  TrendingUp,
-  Target,
-  Shield,
-  Clock,
   Activity,
+  AlertCircle,
   BarChart3,
   ChevronDown,
   ChevronUp,
-  AlertCircle,
-  CheckCircle2,
   Filter,
-  Zap,
-  DollarSign,
-  Percent,
-  Volume2
+  RefreshCw,
+  Shield,
+  Sunrise,
+  Target,
+  TrendingUp,
+  Volume2,
+  Zap
 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
+import { useEffect, useState } from 'react';
 
 interface StockRecommendation {
   symbol: string;
@@ -102,6 +97,7 @@ const MorningRecommendations = () => {
 
       const result = data as RecommendationsResponse;
 
+      console.log("result", result)
       if (result.success) {
         setRecommendations(result.allRecommendations || []);
         setTopPicks(result.topPicks || []);
@@ -165,7 +161,7 @@ const MorningRecommendations = () => {
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'text-green-600';
-    if (confidence >= 70) return 'text-blue-600';
+    if (confidence >= 70) return 'text-white';
     if (confidence >= 60) return 'text-yellow-600';
     return 'text-gray-600';
   };
@@ -281,21 +277,21 @@ const MorningRecommendations = () => {
 
           {/* Price Targets */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-            <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+            <div className="text-center p-3 bg-blue-950/30 rounded-lg">
               <div className="flex items-center justify-center gap-1 mb-2">
-                <TrendingUp className="h-3 w-3 text-blue-600" />
+                <TrendingUp className="h-3 w-3 text-white" />
                 <span className="text-muted-foreground font-medium">Entry</span>
               </div>
-              <p className="font-bold text-blue-600">{formatCurrency(stock.entryPrice)}</p>
+              <p className="font-bold text-white">{formatCurrency(stock.entryPrice)}</p>
             </div>
-            <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+            <div className="text-center p-3 bg-green-950/30 rounded-lg">
               <div className="flex items-center justify-center gap-1 mb-2">
                 <Target className="h-3 w-3 text-green-600" />
                 <span className="text-muted-foreground font-medium">Target</span>
               </div>
               <p className="font-bold text-green-600">{formatCurrency(stock.targetPrice)}</p>
             </div>
-            <div className="text-center p-3 bg-red-50 dark:bg-red-950/30 rounded-lg col-span-2 lg:col-span-1">
+            <div className="text-center p-3 bg-red-950/30 rounded-lg col-span-2 lg:col-span-1">
               <div className="flex items-center justify-center gap-1 mb-2">
                 <Shield className="h-3 w-3 text-red-600" />
                 <span className="text-muted-foreground font-medium">Stop Loss</span>
@@ -308,7 +304,7 @@ const MorningRecommendations = () => {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2 bg-muted rounded text-center">
               <p className="text-muted-foreground">RSI</p>
-              <p className={`font-medium ${stock.technicals.rsi > 70 ? 'text-red-600' : stock.technicals.rsi < 30 ? 'text-green-600' : 'text-blue-600'}`}>
+              <p className={`font-medium ${stock.technicals.rsi > 70 ? 'text-red-600' : stock.technicals.rsi < 30 ? 'text-green-600' : 'text-white'}`}>
                 {formatNumber(stock.technicals.rsi)}
               </p>
             </div>
@@ -322,12 +318,12 @@ const MorningRecommendations = () => {
           {(stock.positionSize || stock.riskReward) && (
             <div className="grid grid-cols-2 gap-2 text-xs">
               {stock.positionSize && (
-                <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded text-center">
+                <div className="p-2 bg-blue-950/30 rounded text-center">
                   <p className="text-muted-foreground">Position Size</p>
-                  <p className="font-medium text-blue-600">{stock.positionSize} shares</p>
+                  <p className="font-medium text-white">{stock.positionSize} shares</p>
                 </div>
               )}
-              <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-center">
+              <div className="p-2 bg-purple-950/30 rounded text-center">
                 <p className="text-muted-foreground">Risk:Reward</p>
                 <p className="font-medium text-purple-600">{stock.riskReward}</p>
               </div>
@@ -464,7 +460,7 @@ const MorningRecommendations = () => {
                     <Shield className="h-4 w-4" />
                     Risk Management
                   </h4>
-                  <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+                  <div className="p-3 bg-orange-950/30 rounded-lg">
                     <p className="text-xs text-muted-foreground">Trailing Stop</p>
                     <p className="font-medium text-orange-600">{formatCurrency(stock.trailingStop)}</p>
                   </div>
@@ -478,15 +474,13 @@ const MorningRecommendations = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-            <Sunrise className="h-6 w-6 text-white" />
-          </div>
+          <Sunrise className="h-6 w-6 text-white" />
           <div>
-            <h2 className="text-xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h2 className="text-xl lg:text-3xl font-bold text-white">
               Enhanced Stock Picks
             </h2>
             <p className="text-muted-foreground text-sm lg:text-base">
@@ -497,8 +491,8 @@ const MorningRecommendations = () => {
         <Button
           onClick={fetchRecommendations}
           disabled={isLoading}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-          size="lg"
+          className=""
+          size="default"
         >
           {isLoading ? (
             <RefreshCw className="h-4 w-4 animate-spin mr-2" />
@@ -511,38 +505,26 @@ const MorningRecommendations = () => {
 
       {/* Summary Stats */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-blue-200">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{summary.totalAnalyzed}</p>
-              <p className="text-xs text-muted-foreground">Stocks Analyzed</p>
-            </div>
-          </Card>
-          <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/30 border-green-200">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{summary.buySignals}</p>
               <p className="text-xs text-muted-foreground">Buy Signals</p>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/30 border-red-200">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{summary.sellSignals}</p>
               <p className="text-xs text-muted-foreground">Sell Signals</p>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/30 border-emerald-200">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-emerald-600">{summary.halalRecommendations}</p>
               <p className="text-xs text-muted-foreground">Halal Certified</p>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 border-purple-200">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">{summary.diversifiedRecommendations}</p>
-              <p className="text-xs text-muted-foreground">Diversified Picks</p>
-            </div>
-          </Card>
-          <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/30 border-orange-200">
+          <Card className="p-4 ">
             <div className="text-center">
               <p className="text-2xl font-bold text-orange-600">{topPicks.length}</p>
               <p className="text-xs text-muted-foreground">Top Picks</p>
@@ -551,38 +533,6 @@ const MorningRecommendations = () => {
         </div>
       )}
 
-      {/* Features Display */}
-      {features.length > 0 && (
-        <Card className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/50 dark:to-gray-950/50">
-          <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            Enhanced Features Active
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
-            {features.map((feature, idx) => (
-              <p key={idx} className="text-muted-foreground flex items-center gap-2">
-                <span className="text-green-600">✓</span>
-                {feature.replace('✅ ', '')}
-              </p>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Last Updated */}
-      {lastUpdated && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-          <Clock className="h-4 w-4" />
-          Last updated: {new Date(lastUpdated).toLocaleString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Asia/Kolkata'
-          })} IST
-        </div>
-      )}
 
       {/* Tabs for different views */}
       {hasInitialLoad && !isLoading && (
@@ -664,8 +614,8 @@ const MorningRecommendations = () => {
       {/* Initial State - No data loaded yet */}
       {!hasInitialLoad && !isLoading && (
         <Card className="p-12 text-center">
-          <div className="mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-4 rounded-full w-16 h-16 flex items-center justify-center">
-            <TrendingUp className="h-8 w-8 text-blue-600" />
+          <div className="mx-auto mb-6 bg-white/10 p-4 rounded-full w-16 h-16 flex items-center justify-center">
+            <TrendingUp className="h-8 w-8 text-white" />
           </div>
           <h3 className="text-xl font-bold mb-2">Ready to Analyze</h3>
           <p className="text-muted-foreground mb-6">
@@ -673,8 +623,6 @@ const MorningRecommendations = () => {
           </p>
           <Button
             onClick={fetchRecommendations}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-            size="lg"
           >
             <Zap className="h-4 w-4 mr-2" />
             Generate Recommendations

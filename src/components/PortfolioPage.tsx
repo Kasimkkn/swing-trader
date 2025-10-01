@@ -710,17 +710,19 @@ const PortfolioPage: React.FC = () => {
                                                         </div>
                                                         <div>
                                                             <span className="text-gray-400">Sell Price:</span>
-                                                            <p className="font-medium">{formatCurrency(stock.sellingPrice!)}</p>
+                                                            <p className="font-medium">{formatCurrency(stock.sellingPrice)}</p>
                                                         </div>
                                                         <div>
                                                             <span className="text-gray-400">P&L:</span>
-                                                            <p className={`font-medium ${((parseFloat(formData.sellingPrice) - parseFloat(formData.buyingPrice)) / parseFloat(formData.buyingPrice)) * 100 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {((parseFloat(formData.sellingPrice) - parseFloat(formData.buyingPrice)) / parseFloat(formData.buyingPrice) * 100).toFixed(2)}%
+                                                            <p className={`font-medium ${profit > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {formatCurrency(profit)}
+
                                                             </p>
-                                                            <div>
-                                                                <span className="text-gray-400">Sell Date:</span>
-                                                                <p className="font-medium">{stock.sellDate ? new Date(stock.sellDate).toLocaleDateString() : 'N/A'}</p>
-                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <span className="text-gray-400">Sell Date:</span>
+                                                            <p className="font-medium">{stock.sellDate ? new Date(stock.sellDate).toLocaleDateString() : 'N/A'}</p>
                                                         </div>
                                                     </div>
                                                     <div className='absolute top-4 right-4 z-10'>
@@ -756,8 +758,8 @@ const PortfolioPage: React.FC = () => {
                             </Card>
                         ) : (
                             getFilteredAndSortedStocks(stocks).map((stock) => {
-                                const profit = stock.status === 'sold' ? (stock.sellingPrice! - stock.buyingPrice) * stock.quantity : 0;
-                                const profitPercentage = stock.status === 'sold' ? ((stock.sellingPrice! - stock.buyingPrice) / stock.buyingPrice) * 100 : 0;
+                                const profit = stock.status === 'sold' ? (stock.sellingPrice - stock.buyingPrice) * stock.quantity : 0;
+                                const profitPercentage = stock.status === 'sold' ? ((stock.sellingPrice - stock.buyingPrice) / stock.buyingPrice) * 100 : 0;
                                 const isProfit = profit > 0;
 
                                 return (
@@ -783,21 +785,11 @@ const PortfolioPage: React.FC = () => {
                                                         )}
                                                     </div>
                                                     <p className="text-gray-400 text-sm mb-3">{stock.companyName}</p>
-                                                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 text-sm">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                                                         <div>
                                                             <span className="text-gray-400">Quantity:</span>
                                                             <p className="font-medium">{stock.quantity}</p>
                                                         </div>
-                                                        <div>
-                                                            <span className="text-gray-400">Buy Price:</span>
-                                                            <p className="font-medium">{formatCurrency(stock.buyingPrice)}</p>
-                                                        </div>
-                                                        {stock.status === 'sold' && (
-                                                            <div>
-                                                                <span className="text-gray-400">Sell Price:</span>
-                                                                <p className="font-medium">{formatCurrency(stock.sellingPrice!)}</p>
-                                                            </div>
-                                                        )}
                                                         {stock.status === 'sold' && (
                                                             <div>
                                                                 <span className="text-gray-400">P&L:</span>
