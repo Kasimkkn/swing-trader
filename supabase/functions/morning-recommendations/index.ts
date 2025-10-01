@@ -281,7 +281,8 @@ async function fetchYahooDataEnhanced(symbol: string) {
       };
 
     } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed for ${symbol}:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Attempt ${attempt + 1} failed for ${symbol}:`, errorMessage);
       if (attempt < MAX_RETRIES - 1) {
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (attempt + 1)));
       } else {
@@ -572,31 +573,53 @@ serve(async (req) => {
       const stock = stocks.find(s => s.symbol === rec.symbol);
       if (!stock) continue;
 
-      const { error: upsertError } = await supabase
+      // Check if recommendation exists for today
+      const { data: existing } = await supabase
         .from('ai_recommendations')
-        .upsert({
-          stock_id: stock.id,
-          signal: rec.signal,
-          confidence: rec.confidence,
-          target_price: rec.targetPrice,
-          stop_loss: rec.stopLoss,
-          entry_price: rec.entryPrice,
-          ema9: null,
-          ema20: rec.technicals.ema20,
-          rsi: rec.technicals.rsi,
-          atr: rec.technicals.atr,
-          supertrend: rec.technicals.supertrend,
-          reasons: rec.reasons,
-          recommendation_date: today,
-          is_halal: rec.isHalal,
-          position_size: rec.positionSize,
-          trailing_stop: rec.trailingStop
-        }, {
-          onConflict: 'stock_id,recommendation_date'
-        });
+        .select('id')
+        .eq('stock_id', stock.id)
+        .eq('recommendation_date', today)
+        .maybeSingle();
 
-      if (upsertError) {
-        console.error(`Error upserting recommendation for ${rec.symbol}:`, upsertError);
+      if (existing) {
+        // Update existing recommendation
+        const { error: updateError } = await supabase
+          .from('ai_recommendations')
+          .update({
+            signal: rec.signal,
+            confidence: rec.confidence,
+            target_price: rec.targetPrice,
+            stop_loss: rec.stopLoss,
+            entry_price: rec.entryPrice,
+            ema20: rec.technicals.ema20,
+            rsi: rec.technicals.rsi,
+            reasons: rec.reasons
+          })
+          .eq('id', existing.id);
+
+        if (updateError) {
+          console.error(`Error updating recommendation for ${rec.symbol}:`, updateError);
+        }
+      } else {
+        // Insert new recommendation
+        const { error: insertError } = await supabase
+          .from('ai_recommendations')
+          .insert({
+            stock_id: stock.id,
+            signal: rec.signal,
+            confidence: rec.confidence,
+            target_price: rec.targetPrice,
+            stop_loss: rec.stopLoss,
+            entry_price: rec.entryPrice,
+            ema20: rec.technicals.ema20,
+            rsi: rec.technicals.rsi,
+            reasons: rec.reasons,
+            recommendation_date: today
+          });
+
+        if (insertError) {
+          console.error(`Error inserting recommendation for ${rec.symbol}:`, insertError);
+        }
       }
     }
 
@@ -631,9 +654,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in enhanced morning-recommendations function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate recommendations';
     return new Response(JSON.stringify({
       error: 'Failed to generate recommendations',
-      details: error.message
+      details: errorMessage
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -124,7 +124,7 @@ async function getSectorAnalysis(sector: string) {
         // You could integrate with Moneycontrol or other Indian financial sites here
         // For now, using simulated data with some logic
 
-        const sectorPerformances = {
+        const sectorPerformances: Record<string, number> = {
             'Technology': Math.random() * 20 - 5,
             'Banking': Math.random() * 15 - 7,
             'Pharmaceutical': Math.random() * 25 - 10,

@@ -279,29 +279,120 @@ const PortfolioPage: React.FC = () => {
 
             // Now handle portfolio operations
             if (modalMode === 'create') {
-                const { error: insertError } = await supabase
+                // Check if stock already exists in portfolio with 'hold' status
+                const { data: existingPortfolio, error: portfolioCheckError } = await supabase
                     .from('portfolio')
+                    .select('*')
+                    .eq('stock_id', stockId)
+                    .eq('status', 'hold')
+                    .maybeSingle();
+
+                if (portfolioCheckError) throw portfolioCheckError;
+
+                const newQuantity = parseInt(formData.quantity);
+                const newPrice = parseFloat(formData.buyingPrice);
+
+                if (existingPortfolio) {
+                    // Update existing holding - calculate new average price
+                    const oldQuantity = existingPortfolio.quantity;
+                    const oldPrice = typeof existingPortfolio.buying_price === 'string' ? 
+                        parseFloat(existingPortfolio.buying_price) : existingPortfolio.buying_price;
+                    const totalQuantity = oldQuantity + newQuantity;
+                    const averagePrice = ((oldQuantity * oldPrice) + (newQuantity * newPrice)) / totalQuantity;
+
+                    const { error: updateError } = await supabase
+                        .from('portfolio')
+                        .update({
+                            quantity: totalQuantity,
+                            buying_price: averagePrice
+                        })
+                        .eq('id', existingPortfolio.id);
+
+                    if (updateError) throw updateError;
+                } else {
+                    // Create new portfolio entry
+                    const { error: insertError } = await supabase
+                        .from('portfolio')
+                        .insert({
+                            stock_id: stockId,
+                            quantity: newQuantity,
+                            buying_price: newPrice,
+                            buy_date: formData.buyDate,
+                            status: 'hold'
+                        });
+
+                    if (insertError) throw insertError;
+                }
+
+                // Record transaction
+                const { error: transactionError } = await supabase
+                    .from('transactions')
                     .insert({
                         stock_id: stockId,
-                        quantity: parseInt(formData.quantity),
-                        buying_price: parseFloat(formData.buyingPrice),
-                        buy_date: formData.buyDate,
-                        status: 'hold'
+                        transaction_type: 'BUY',
+                        quantity: newQuantity,
+                        price_per_share: newPrice,
+                        transaction_date: formData.buyDate
                     });
 
-                if (insertError) throw insertError;
+                if (transactionError) throw transactionError;
+
+            } else if (modalMode === 'sell' && selectedStock) {
+                const sellQuantity = parseInt(formData.quantity);
+                const sellPrice = parseFloat(formData.sellingPrice || '0');
+                const currentQuantity = selectedStock.quantity;
+
+                if (sellQuantity > currentQuantity) {
+                    throw new Error('Cannot sell more than current quantity');
+                }
+
+                const remainingQuantity = currentQuantity - sellQuantity;
+
+                if (remainingQuantity > 0) {
+                    // Partial sell - update quantity
+                    const { error: updateError } = await supabase
+                        .from('portfolio')
+                        .update({
+                            quantity: remainingQuantity
+                        })
+                        .eq('id', selectedStock.id);
+
+                    if (updateError) throw updateError;
+                } else {
+                    // Full sell - mark as sold
+                    const { error: updateError } = await supabase
+                        .from('portfolio')
+                        .update({
+                            quantity: 0,
+                            selling_price: sellPrice,
+                            sell_date: formData.sellDate,
+                            status: 'sold'
+                        })
+                        .eq('id', selectedStock.id);
+
+                    if (updateError) throw updateError;
+                }
+
+                // Record sell transaction
+                const { error: transactionError } = await supabase
+                    .from('transactions')
+                    .insert({
+                        stock_id: stockId,
+                        transaction_type: 'SELL',
+                        quantity: sellQuantity,
+                        price_per_share: sellPrice,
+                        transaction_date: formData.sellDate || new Date().toISOString().split('T')[0]
+                    });
+
+                if (transactionError) throw transactionError;
+
             } else if (selectedStock) {
+                // Edit mode
                 const updateData: any = {
                     quantity: parseInt(formData.quantity),
                     buying_price: parseFloat(formData.buyingPrice),
                     buy_date: formData.buyDate
                 };
-
-                if (modalMode === 'sell') {
-                    updateData.selling_price = parseFloat(formData.sellingPrice || '0');
-                    updateData.sell_date = formData.sellDate;
-                    updateData.status = 'sold';
-                }
 
                 const { error: updateError } = await supabase
                     .from('portfolio')
@@ -313,17 +404,19 @@ const PortfolioPage: React.FC = () => {
 
             toast({
                 title: "Success",
-                description: modalMode === 'create' ? "Stock added to portfolio" : "Stock updated successfully"
+                description: modalMode === 'create' ? "Stock added to portfolio" : 
+                            modalMode === 'sell' ? "Stock sold successfully" : "Stock updated successfully"
             });
 
             setIsModalOpen(false);
             resetForm();
-            fetchPortfolioStocks(); // Refresh the data
+            fetchPortfolioStocks();
         } catch (error) {
             console.error('Error:', error);
+            const errorMessage = error instanceof Error ? error.message : "Failed to save stock. Please try again.";
             toast({
                 title: "Error",
-                description: "Failed to save stock. Please try again.",
+                description: errorMessage,
                 variant: "destructive"
             });
         } finally {
@@ -342,12 +435,16 @@ const PortfolioPage: React.FC = () => {
     const handleConfirmDelete = async () => {
         if (stockToDelete) {
             try {
+                // Delete the portfolio entry (transactions will cascade or remain for history)
                 const { error } = await supabase
                     .from('portfolio')
                     .delete()
                     .eq('id', stockToDelete.id);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Delete error:', error);
+                    throw error;
+                }
 
                 toast({
                     title: "Success",
@@ -356,12 +453,13 @@ const PortfolioPage: React.FC = () => {
 
                 setIsConfirmDeleteOpen(false);
                 setStockToDelete(null);
-                fetchPortfolioStocks(); // Refresh the data
+                await fetchPortfolioStocks();
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error deleting stock:', error);
+                const errorMessage = error instanceof Error ? error.message : "Failed to delete stock";
                 toast({
                     title: "Error",
-                    description: "Failed to delete stock",
+                    description: errorMessage,
                     variant: "destructive"
                 });
             }

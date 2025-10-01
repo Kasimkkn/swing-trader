@@ -194,6 +194,47 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          created_at: string
+          id: string
+          price_per_share: number
+          quantity: number
+          stock_id: string
+          transaction_date: string
+          transaction_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price_per_share: number
+          quantity: number
+          stock_id: string
+          transaction_date?: string
+          transaction_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price_per_share?: number
+          quantity?: number
+          stock_id?: string
+          transaction_date?: string
+          transaction_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlist: {
         Row: {
           created_at: string
