@@ -161,7 +161,7 @@ const MorningRecommendations = () => {
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'text-green-600';
-    if (confidence >= 70) return 'text-blue-600';
+    if (confidence >= 70) return 'text-white';
     if (confidence >= 60) return 'text-yellow-600';
     return 'text-gray-600';
   };
@@ -277,21 +277,21 @@ const MorningRecommendations = () => {
 
           {/* Price Targets */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-            <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+            <div className="text-center p-3 bg-blue-950/30 rounded-lg">
               <div className="flex items-center justify-center gap-1 mb-2">
-                <TrendingUp className="h-3 w-3 text-blue-600" />
+                <TrendingUp className="h-3 w-3 text-white" />
                 <span className="text-muted-foreground font-medium">Entry</span>
               </div>
-              <p className="font-bold text-blue-600">{formatCurrency(stock.entryPrice)}</p>
+              <p className="font-bold text-white">{formatCurrency(stock.entryPrice)}</p>
             </div>
-            <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+            <div className="text-center p-3 bg-green-950/30 rounded-lg">
               <div className="flex items-center justify-center gap-1 mb-2">
                 <Target className="h-3 w-3 text-green-600" />
                 <span className="text-muted-foreground font-medium">Target</span>
               </div>
               <p className="font-bold text-green-600">{formatCurrency(stock.targetPrice)}</p>
             </div>
-            <div className="text-center p-3 bg-red-50 dark:bg-red-950/30 rounded-lg col-span-2 lg:col-span-1">
+            <div className="text-center p-3 bg-red-950/30 rounded-lg col-span-2 lg:col-span-1">
               <div className="flex items-center justify-center gap-1 mb-2">
                 <Shield className="h-3 w-3 text-red-600" />
                 <span className="text-muted-foreground font-medium">Stop Loss</span>
@@ -304,7 +304,7 @@ const MorningRecommendations = () => {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2 bg-muted rounded text-center">
               <p className="text-muted-foreground">RSI</p>
-              <p className={`font-medium ${stock.technicals.rsi > 70 ? 'text-red-600' : stock.technicals.rsi < 30 ? 'text-green-600' : 'text-blue-600'}`}>
+              <p className={`font-medium ${stock.technicals.rsi > 70 ? 'text-red-600' : stock.technicals.rsi < 30 ? 'text-green-600' : 'text-white'}`}>
                 {formatNumber(stock.technicals.rsi)}
               </p>
             </div>
@@ -318,12 +318,12 @@ const MorningRecommendations = () => {
           {(stock.positionSize || stock.riskReward) && (
             <div className="grid grid-cols-2 gap-2 text-xs">
               {stock.positionSize && (
-                <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded text-center">
+                <div className="p-2 bg-blue-950/30 rounded text-center">
                   <p className="text-muted-foreground">Position Size</p>
-                  <p className="font-medium text-blue-600">{stock.positionSize} shares</p>
+                  <p className="font-medium text-white">{stock.positionSize} shares</p>
                 </div>
               )}
-              <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-center">
+              <div className="p-2 bg-purple-950/30 rounded text-center">
                 <p className="text-muted-foreground">Risk:Reward</p>
                 <p className="font-medium text-purple-600">{stock.riskReward}</p>
               </div>
@@ -460,7 +460,7 @@ const MorningRecommendations = () => {
                     <Shield className="h-4 w-4" />
                     Risk Management
                   </h4>
-                  <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+                  <div className="p-3 bg-orange-950/30 rounded-lg">
                     <p className="text-xs text-muted-foreground">Trailing Stop</p>
                     <p className="font-medium text-orange-600">{formatCurrency(stock.trailingStop)}</p>
                   </div>
@@ -614,8 +614,8 @@ const MorningRecommendations = () => {
       {/* Initial State - No data loaded yet */}
       {!hasInitialLoad && !isLoading && (
         <Card className="p-12 text-center">
-          <div className="mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-4 rounded-full w-16 h-16 flex items-center justify-center">
-            <TrendingUp className="h-8 w-8 text-blue-600" />
+          <div className="mx-auto mb-6 bg-white/10 p-4 rounded-full w-16 h-16 flex items-center justify-center">
+            <TrendingUp className="h-8 w-8 text-white" />
           </div>
           <h3 className="text-xl font-bold mb-2">Ready to Analyze</h3>
           <p className="text-muted-foreground mb-6">
@@ -623,8 +623,6 @@ const MorningRecommendations = () => {
           </p>
           <Button
             onClick={fetchRecommendations}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-            size="lg"
           >
             <Zap className="h-4 w-4 mr-2" />
             Generate Recommendations
