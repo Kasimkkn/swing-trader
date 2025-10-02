@@ -1,19 +1,28 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Activity,
   AlertCircle,
   BarChart3,
+  Calendar,
   ChevronDown,
   ChevronUp,
+  Copy,
+  Download,
+  ExternalLink,
   Filter,
+  LineChart,
   RefreshCw,
+  Search,
   Shield,
   Sunrise,
   Target,
@@ -73,6 +82,7 @@ interface RecommendationsResponse {
 
 const MorningRecommendations = () => {
   const [recommendations, setRecommendations] = useState<StockRecommendation[]>([]);
+  const [filteredRecommendations, setFilteredRecommendations] = useState<StockRecommendation[]>([]);
   const [topPicks, setTopPicks] = useState<StockRecommendation[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [features, setFeatures] = useState<string[]>([]);
@@ -81,13 +91,19 @@ const MorningRecommendations = () => {
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedSignal, setSelectedSignal] = useState<string>('all');
+  const [selectedDateRange, setSelectedDateRange] = useState<string>('today');
+  const [sortBy, setSortBy] = useState<string>('confidence');
+  
   const { toast } = useToast();
 
   const fetchRecommendations = async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching enhanced morning recommendations...');
+      console.log('Fetching swing-trader recommendations...');
 
       const { data, error } = await supabase.functions.invoke('morning-recommendations');
 
@@ -97,7 +113,6 @@ const MorningRecommendations = () => {
 
       const result = data as RecommendationsResponse;
 
-      console.log("result", result)
       if (result.success) {
         setRecommendations(result.allRecommendations || []);
         setTopPicks(result.topPicks || []);
@@ -106,7 +121,7 @@ const MorningRecommendations = () => {
         setLastUpdated(result.generatedAt);
         setHasInitialLoad(true);
 
-        // Save to localStorage with timestamp check
+        // Save to localStorage
         localStorage.setItem('morning-recommendations-enhanced', JSON.stringify(result));
         localStorage.setItem('morning-recommendations-time-enhanced', result.generatedAt);
 
@@ -129,7 +144,7 @@ const MorningRecommendations = () => {
     }
   };
 
-  // Load cached data on component mount
+  // Load cached data on mount
   useEffect(() => {
     const cachedData = localStorage.getItem('morning-recommendations-enhanced');
     const cachedTime = localStorage.getItem('morning-recommendations-time-enhanced');
@@ -149,6 +164,43 @@ const MorningRecommendations = () => {
     }
   }, []);
 
+  // Apply filters and sorting
+  useEffect(() => {
+    let filtered = [...recommendations];
+
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter(stock =>
+        stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        stock.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        stock.sector?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by signal
+    if (selectedSignal !== 'all') {
+      filtered = filtered.filter(stock => stock.signal === selectedSignal);
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'confidence':
+          return b.confidence - a.confidence;
+        case 'symbol':
+          return a.symbol.localeCompare(b.symbol);
+        case 'price':
+          return b.technicals.currentPrice - a.technicals.currentPrice;
+        case 'rsi':
+          return b.technicals.rsi - a.technicals.rsi;
+        default:
+          return 0;
+      }
+    });
+
+    setFilteredRecommendations(filtered);
+  }, [recommendations, searchQuery, selectedSignal, sortBy]);
+
   const getSignalColor = (signal: string) => {
     switch (signal) {
       case 'BUY': return 'bg-green-500 text-white hover:bg-green-600';
@@ -166,16 +218,6 @@ const MorningRecommendations = () => {
     return 'text-gray-600';
   };
 
-  const getFilteredRecommendations = () => {
-    let filtered = recommendations;
-
-    if (selectedSignal !== 'all') {
-      filtered = filtered.filter(stock => stock.signal === selectedSignal);
-    }
-
-    return filtered;
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -189,8 +231,57 @@ const MorningRecommendations = () => {
     return value.toFixed(decimals);
   };
 
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Kolkata'
+    });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: "Symbol copied to clipboard",
+    });
+  };
+
+  const exportToCSV = () => {
+    const csvData = filteredRecommendations.map(stock => ({
+      Symbol: stock.symbol,
+      Company: stock.companyName,
+      Signal: stock.signal,
+      Confidence: stock.confidence,
+      CurrentPrice: stock.technicals.currentPrice,
+      EntryPrice: stock.entryPrice,
+      Target: stock.targetPrice,
+      StopLoss: stock.stopLoss,
+      RiskReward: stock.riskReward,
+      RSI: stock.technicals.rsi,
+      Sector: stock.sector || 'N/A',
+      Halal: stock.isHalal ? 'Yes' : 'No'
+    }));
+
+    const headers = Object.keys(csvData[0]).join(',');
+    const rows = csvData.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `recommendations-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+
+    toast({
+      title: "Export Complete",
+      description: "Recommendations exported to CSV",
+    });
+  };
+
   const SkeletonCard = () => (
-    <Card className="bg-card border border-border hover:shadow-lg transition-all duration-200">
+    <Card className="bg-card border border-border">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
@@ -206,10 +297,6 @@ const MorningRecommendations = () => {
           <Skeleton className="h-16 bg-muted" />
           <Skeleton className="h-16 bg-muted" />
         </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 bg-muted" />
-          <Skeleton className="h-4 bg-muted" />
-        </div>
       </CardContent>
     </Card>
   );
@@ -217,40 +304,40 @@ const MorningRecommendations = () => {
   const StockCard = ({ stock, isTopPick = false }: { stock: StockRecommendation; isTopPick?: boolean }) => {
     const isExpanded = expandedCard === `${stock.symbol}-${isTopPick ? 'top' : 'all'}`;
     const cardKey = `${stock.symbol}-${isTopPick ? 'top' : 'all'}`;
+    const mainReason = stock.reasons.find(r => !r.includes('✅') && !r.includes('⚠️')) || stock.reasons[0];
 
     return (
-      <Card className={`bg-card border transition-all duration-300 hover:shadow-xl ${isTopPick ? 'ring-2 ring-blue-500 ring-opacity-50' : 'border-border hover:border-primary/50'}`}>
+      <Card className={`bg-card border transition-all duration-300 hover:shadow-xl ${isTopPick ? 'ring-2 ring-primary/50' : 'border-border hover:border-primary/50'}`}>
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <CardTitle className="text-lg font-bold truncate">{stock.symbol}</CardTitle>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <CardTitle className="text-lg font-bold">{stock.symbol}</CardTitle>
                 {stock.isHalal && (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400">
                     ✅ Halal
                   </Badge>
                 )}
                 {isTopPick && (
-                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                    🌟 Top Pick
+                  <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                    ⭐ Top Pick
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground truncate mb-1">
+              <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
                 {stock.companyName}
               </p>
               {stock.sector && (
-                <p className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full inline-block">
+                <Badge variant="secondary" className="text-xs">
                   {stock.sector}
-                </p>
+                </Badge>
               )}
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <Badge className={getSignalColor(stock.signal)}>
                 {stock.signal}
               </Badge>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Confidence</p>
                 <p className={`text-lg font-bold ${getConfidenceColor(stock.confidence)}`}>
                   {stock.confidence}%
                 </p>
@@ -261,99 +348,98 @@ const MorningRecommendations = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Current Price & Key Metrics */}
-          <div className="bg-muted p-3 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Current Price</span>
-              <span className="text-lg font-bold">{formatCurrency(stock.technicals.currentPrice)}</span>
+          {/* Current Price */}
+          <div className="bg-muted/50 p-3 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">Current Price</span>
+              <span className="text-xl font-bold">{formatCurrency(stock.technicals.currentPrice)}</span>
             </div>
-            {stock.technicals.volatility && (
-              <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>Volatility</span>
-                <span>{formatNumber(stock.technicals.volatility * 100, 1)}%</span>
-              </div>
-            )}
           </div>
 
-          {/* Price Targets */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-            <div className="text-center p-3 bg-blue-950/30 rounded-lg">
-              <div className="flex items-center justify-center gap-1 mb-2">
-                <TrendingUp className="h-3 w-3 text-white" />
+          {/* Key Reason with Tooltip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg cursor-help">
+                  <div className="flex items-start gap-2">
+                    <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <p className="text-sm text-foreground line-clamp-2">{mainReason}</p>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <p className="text-sm">{mainReason}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Price Targets Grid */}
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="text-center p-3 bg-blue-950/20 border border-blue-500/30 rounded-lg">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <TrendingUp className="h-3 w-3 text-blue-400" />
                 <span className="text-muted-foreground font-medium">Entry</span>
               </div>
-              <p className="font-bold text-white">{formatCurrency(stock.entryPrice)}</p>
+              <p className="font-bold text-blue-400">{formatCurrency(stock.entryPrice)}</p>
             </div>
-            <div className="text-center p-3 bg-green-950/30 rounded-lg">
-              <div className="flex items-center justify-center gap-1 mb-2">
-                <Target className="h-3 w-3 text-green-600" />
+            <div className="text-center p-3 bg-green-950/20 border border-green-500/30 rounded-lg">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Target className="h-3 w-3 text-green-400" />
                 <span className="text-muted-foreground font-medium">Target</span>
               </div>
-              <p className="font-bold text-green-600">{formatCurrency(stock.targetPrice)}</p>
+              <p className="font-bold text-green-400">{formatCurrency(stock.targetPrice)}</p>
             </div>
-            <div className="text-center p-3 bg-red-950/30 rounded-lg col-span-2 lg:col-span-1">
-              <div className="flex items-center justify-center gap-1 mb-2">
-                <Shield className="h-3 w-3 text-red-600" />
-                <span className="text-muted-foreground font-medium">Stop Loss</span>
+            <div className="text-center p-3 bg-red-950/20 border border-red-500/30 rounded-lg">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Shield className="h-3 w-3 text-red-400" />
+                <span className="text-muted-foreground font-medium">Stop</span>
               </div>
-              <p className="font-bold text-red-600">{formatCurrency(stock.stopLoss)}</p>
+              <p className="font-bold text-red-400">{formatCurrency(stock.stopLoss)}</p>
             </div>
           </div>
 
-          {/* Technical Indicators Quick View */}
+          {/* Quick Metrics */}
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2 bg-muted rounded text-center">
-              <p className="text-muted-foreground">RSI</p>
-              <p className={`font-medium ${stock.technicals.rsi > 70 ? 'text-red-600' : stock.technicals.rsi < 30 ? 'text-green-600' : 'text-white'}`}>
+            <div className="p-2 bg-muted/50 rounded text-center">
+              <p className="text-muted-foreground mb-1">RSI</p>
+              <p className={`font-bold ${stock.technicals.rsi > 70 ? 'text-red-500' : stock.technicals.rsi < 30 ? 'text-green-500' : ''}`}>
                 {formatNumber(stock.technicals.rsi)}
               </p>
             </div>
-            <div className="p-2 bg-muted rounded text-center">
-              <p className="text-muted-foreground">EMA20</p>
-              <p className="font-medium">{formatCurrency(stock.technicals.ema20)}</p>
+            <div className="p-2 bg-muted/50 rounded text-center">
+              <p className="text-muted-foreground mb-1">Risk:Reward</p>
+              <p className="font-bold text-primary">{stock.riskReward}</p>
             </div>
           </div>
 
-          {/* Risk & Position Info */}
-          {(stock.positionSize || stock.riskReward) && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {stock.positionSize && (
-                <div className="p-2 bg-blue-950/30 rounded text-center">
-                  <p className="text-muted-foreground">Position Size</p>
-                  <p className="font-medium text-white">{stock.positionSize} shares</p>
-                </div>
-              )}
-              <div className="p-2 bg-purple-950/30 rounded text-center">
-                <p className="text-muted-foreground">Risk:Reward</p>
-                <p className="font-medium text-purple-600">{stock.riskReward}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Key Factors Preview */}
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Key Factors:</p>
-            <div className="space-y-1">
-              {stock.reasons.slice(0, 2).map((reason, idx) => (
-                <p key={idx} className="text-xs text-foreground bg-muted px-3 py-2 rounded-lg flex items-start gap-2">
-                  <span className="text-primary mt-0.5">•</span>
-                  <span className="flex-1">{reason}</span>
-                </p>
-              ))}
-              {stock.reasons.length > 2 && !isExpanded && (
-                <p className="text-xs text-muted-foreground">
-                  +{stock.reasons.length - 2} more factors
-                </p>
-              )}
-            </div>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => copyToClipboard(stock.symbol)}
+            >
+              <Copy className="h-3 w-3 mr-1" />
+              Copy
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => window.open(`https://www.tradingview.com/chart/?symbol=NSE:${stock.symbol}`, '_blank')}
+            >
+              <LineChart className="h-3 w-3 mr-1" />
+              Chart
+            </Button>
           </div>
 
-          {/* Expand/Collapse Button */}
+          {/* Expand/Collapse */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setExpandedCard(isExpanded ? null : cardKey)}
-            className="w-full mt-2"
+            className="w-full"
           >
             {isExpanded ? (
               <>
@@ -363,57 +449,55 @@ const MorningRecommendations = () => {
             ) : (
               <>
                 <ChevronDown className="h-4 w-4 mr-1" />
-                Show More Details
+                Full Analysis
               </>
             )}
           </Button>
 
           {/* Expanded Details */}
           {isExpanded && (
-            <div className="space-y-4 mt-4 pt-4 border-t border-border">
+            <div className="space-y-4 pt-4 border-t border-border">
               {/* All Technical Indicators */}
               <div>
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Technical Analysis
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  Technical Indicators
                 </h4>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                  <div className="p-2 bg-muted rounded text-center">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 bg-muted/50 rounded text-center">
+                    <p className="text-muted-foreground">EMA20</p>
+                    <p className="font-medium">{formatCurrency(stock.technicals.ema20)}</p>
+                  </div>
+                  <div className="p-2 bg-muted/50 rounded text-center">
                     <p className="text-muted-foreground">EMA50</p>
                     <p className="font-medium">{formatCurrency(stock.technicals.ema50)}</p>
                   </div>
                   {stock.technicals.atr && (
-                    <div className="p-2 bg-muted rounded text-center">
+                    <div className="p-2 bg-muted/50 rounded text-center">
                       <p className="text-muted-foreground">ATR</p>
                       <p className="font-medium">{formatNumber(stock.technicals.atr)}</p>
                     </div>
                   )}
-                  {stock.technicals.supertrend && (
-                    <div className="p-2 bg-muted rounded text-center">
-                      <p className="text-muted-foreground">SuperTrend</p>
-                      <p className={`font-medium ${stock.technicals.supertrendSignal === 'BUY' ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(stock.technicals.supertrend)}
-                      </p>
-                    </div>
-                  )}
                   {stock.technicals.macd && (
-                    <div className="p-2 bg-muted rounded text-center">
+                    <div className="p-2 bg-muted/50 rounded text-center">
                       <p className="text-muted-foreground">MACD</p>
-                      <p className={`font-medium ${stock.technicals.macd > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`font-medium ${stock.technicals.macd > 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {formatNumber(stock.technicals.macd, 3)}
                       </p>
                     </div>
                   )}
-                  {stock.technicals.bbUpper && (
-                    <div className="p-2 bg-muted rounded text-center">
-                      <p className="text-muted-foreground">BB Upper</p>
-                      <p className="font-medium">{formatCurrency(stock.technicals.bbUpper)}</p>
+                  {stock.technicals.supertrend && (
+                    <div className="p-2 bg-muted/50 rounded text-center">
+                      <p className="text-muted-foreground">SuperTrend</p>
+                      <p className={`font-medium ${stock.technicals.supertrendSignal === 'BUY' ? 'text-green-500' : 'text-red-500'}`}>
+                        {stock.technicals.supertrendSignal}
+                      </p>
                     </div>
                   )}
-                  {stock.technicals.bbLower && (
-                    <div className="p-2 bg-muted rounded text-center">
-                      <p className="text-muted-foreground">BB Lower</p>
-                      <p className="font-medium">{formatCurrency(stock.technicals.bbLower)}</p>
+                  {stock.technicals.volatility && (
+                    <div className="p-2 bg-muted/50 rounded text-center">
+                      <p className="text-muted-foreground">Volatility</p>
+                      <p className="font-medium">{formatNumber(stock.technicals.volatility * 100, 1)}%</p>
                     </div>
                   )}
                 </div>
@@ -421,16 +505,16 @@ const MorningRecommendations = () => {
 
               {/* Volume Analysis */}
               <div>
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Volume2 className="h-4 w-4" />
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-primary" />
                   Volume Analysis
                 </h4>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-2 bg-muted rounded text-center">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-muted/50 rounded text-center">
                     <p className="text-muted-foreground">Current Volume</p>
                     <p className="font-medium">{(stock.technicals.volume / 1000).toFixed(0)}K</p>
                   </div>
-                  <div className="p-2 bg-muted rounded text-center">
+                  <div className="p-2 bg-muted/50 rounded text-center">
                     <p className="text-muted-foreground">Avg Volume</p>
                     <p className="font-medium">{(stock.technicals.avgVolume / 1000).toFixed(0)}K</p>
                   </div>
@@ -439,30 +523,29 @@ const MorningRecommendations = () => {
 
               {/* All Reasons */}
               <div>
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Complete Analysis
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Analysis Factors
                 </h4>
                 <div className="space-y-2">
                   {stock.reasons.map((reason, idx) => (
-                    <p key={idx} className="text-xs text-foreground bg-muted px-3 py-2 rounded-lg flex items-start gap-2">
-                      <span className="text-primary mt-0.5 font-bold">•</span>
+                    <div key={idx} className="text-xs p-2 bg-muted/50 rounded-lg flex items-start gap-2">
+                      <span className="text-primary mt-0.5 shrink-0">•</span>
                       <span className="flex-1">{reason}</span>
-                    </p>
+                    </div>
                   ))}
                 </div>
               </div>
 
-              {/* Additional Risk Info */}
-              {stock.trailingStop && (
+              {/* Position Details */}
+              {stock.positionSize && (
                 <div>
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Risk Management
-                  </h4>
-                  <div className="p-3 bg-orange-950/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Trailing Stop</p>
-                    <p className="font-medium text-orange-600">{formatCurrency(stock.trailingStop)}</p>
+                  <h4 className="text-sm font-semibold mb-3">Position Details</h4>
+                  <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg text-xs">
+                    <p className="mb-2"><span className="font-medium">Position Size:</span> {stock.positionSize} shares</p>
+                    <p className="text-muted-foreground">
+                      Based on 2% portfolio risk with ATR-based stop loss
+                    </p>
                   </div>
                 </div>
               )}
@@ -474,161 +557,201 @@ const MorningRecommendations = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Sunrise className="h-6 w-6 text-white" />
-          <div>
-            <h2 className="text-xl lg:text-3xl font-bold text-white">
-              Enhanced Stock Picks
-            </h2>
-            <p className="text-muted-foreground text-sm lg:text-base">
-              AI-powered recommendations with advanced technical analysis
-            </p>
+      <div className="border-b border-border bg-card">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Sunrise className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Swing Trader Recommendations</h1>
+                <p className="text-sm text-muted-foreground">
+                  AI-powered stock analysis for 1-3 day swings
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={fetchRecommendations}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Analyzing...' : 'Refresh'}
+            </Button>
           </div>
-        </div>
-        <Button
-          onClick={fetchRecommendations}
-          disabled={isLoading}
-          className=""
-          size="default"
-        >
-          {isLoading ? (
-            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Zap className="h-4 w-4 mr-2" />
+
+          {lastUpdated && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              Last updated: {formatTimestamp(lastUpdated)}
+              <span className="text-xs text-primary ml-2">● Auto-updates every 2 hours</span>
+            </div>
           )}
-          {isLoading ? 'Analyzing...' : 'Generate Picks'}
-        </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4 ">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{summary.buySignals}</p>
-              <p className="text-xs text-muted-foreground">Buy Signals</p>
+        <div className="border-b border-border bg-muted/30">
+          <div className="container mx-auto px-4 py-6">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{summary.totalAnalyzed}</p>
+                <p className="text-xs text-muted-foreground">Analyzed</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-500">{summary.buySignals}</p>
+                <p className="text-xs text-muted-foreground">Buy Signals</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-500">{summary.sellSignals}</p>
+                <p className="text-xs text-muted-foreground">Sell Signals</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{summary.validRecommendations}</p>
+                <p className="text-xs text-muted-foreground">Valid Picks</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-500">{summary.diversifiedRecommendations}</p>
+                <p className="text-xs text-muted-foreground">Diversified</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">{summary.halalRecommendations}</p>
+                <p className="text-xs text-muted-foreground">Halal</p>
+              </div>
             </div>
-          </Card>
-          <Card className="p-4 ">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-red-600">{summary.sellSignals}</p>
-              <p className="text-xs text-muted-foreground">Sell Signals</p>
-            </div>
-          </Card>
-          <Card className="p-4 ">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-emerald-600">{summary.halalRecommendations}</p>
-              <p className="text-xs text-muted-foreground">Halal Certified</p>
-            </div>
-          </Card>
-          <Card className="p-4 ">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-orange-600">{topPicks.length}</p>
-              <p className="text-xs text-muted-foreground">Top Picks</p>
-            </div>
-          </Card>
+          </div>
         </div>
       )}
 
+      {/* Filters and Controls */}
+      <div className="border-b border-border bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by symbol, company, or sector..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-      {/* Tabs for different views */}
-      {hasInitialLoad && !isLoading && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <TabsList className="grid w-full lg:w-auto grid-cols-2 lg:grid-cols-auto">
-              <TabsTrigger value="top">Top Picks ({topPicks.length})</TabsTrigger>
-              <TabsTrigger value="all">All Picks ({recommendations.length})</TabsTrigger>
+            {/* Signal Filter */}
+            <Select value={selectedSignal} onValueChange={setSelectedSignal}>
+              <SelectTrigger className="w-full md:w-[140px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Signal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Signals</SelectItem>
+                <SelectItem value="BUY">Buy</SelectItem>
+                <SelectItem value="SELL">Sell</SelectItem>
+                <SelectItem value="HOLD">Hold</SelectItem>
+                <SelectItem value="NEUTRAL">Neutral</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort By */}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full md:w-[150px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="confidence">Confidence</SelectItem>
+                <SelectItem value="symbol">Symbol</SelectItem>
+                <SelectItem value="price">Price</SelectItem>
+                <SelectItem value="rsi">RSI</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Export */}
+            <Button
+              variant="outline"
+              onClick={exportToCSV}
+              disabled={filteredRecommendations.length === 0}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+
+          {/* Results count */}
+          <div className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredRecommendations.length} of {recommendations.length} recommendations
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="container mx-auto px-4 py-6">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : !hasInitialLoad ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Sunrise className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Recommendations Yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Click refresh to generate today's swing-trader recommendations
+              </p>
+              <Button onClick={fetchRecommendations}>
+                Generate Recommendations
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="all" className="gap-2">
+                <Activity className="h-4 w-4" />
+                All Picks ({filteredRecommendations.length})
+              </TabsTrigger>
+              <TabsTrigger value="top" className="gap-2">
+                <Zap className="h-4 w-4" />
+                Top 5 Picks
+              </TabsTrigger>
             </TabsList>
 
-            {activeTab === 'all' && (
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <select
-                  value={selectedSignal}
-                  onChange={(e) => setSelectedSignal(e.target.value)}
-                  className="px-3 py-1 bg-background border border-border rounded-md text-sm"
-                >
-                  <option value="all">All Signals</option>
-                  <option value="BUY">Buy Only</option>
-                  <option value="SELL">Sell Only</option>
-                  <option value="HOLD">Hold Only</option>
-                  <option value="NEUTRAL">Neutral Only</option>
-                </select>
-              </div>
-            )}
-          </div>
+            <TabsContent value="all">
+              {filteredRecommendations.length === 0 ? (
+                <Card className="text-center py-12">
+                  <CardContent>
+                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">
+                      No recommendations match your filters
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredRecommendations.map((stock) => (
+                    <StockCard key={stock.symbol} stock={stock} />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="top" className="space-y-4">
-            {topPicks.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <TabsContent value="top">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {topPicks.map((stock) => (
-                  <StockCard key={`top-${stock.symbol}`} stock={stock} isTopPick={true} />
+                  <StockCard key={stock.symbol} stock={stock} isTopPick />
                 ))}
               </div>
-            ) : (
-              <Card className="p-12 text-center">
-                <Sunrise className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium">No Top Picks Available</p>
-                <p className="text-muted-foreground mt-2">
-                  Generate recommendations to see top picks
-                </p>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="all" className="space-y-4">
-            {getFilteredRecommendations().length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {getFilteredRecommendations().map((stock) => (
-                  <StockCard key={`all-${stock.symbol}`} stock={stock} />
-                ))}
-              </div>
-            ) : (
-              <Card className="p-12 text-center">
-                <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium">No Recommendations Found</p>
-                <p className="text-muted-foreground mt-2">
-                  {selectedSignal !== 'all'
-                    ? `No ${selectedSignal} signals found. Try a different filter.`
-                    : 'Generate recommendations to see analysis results'
-                  }
-                </p>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <SkeletonCard key={index} />
-          ))}
-        </div>
-      )}
-
-      {/* Initial State - No data loaded yet */}
-      {!hasInitialLoad && !isLoading && (
-        <Card className="p-12 text-center">
-          <div className="mx-auto mb-6 bg-white/10 p-4 rounded-full w-16 h-16 flex items-center justify-center">
-            <TrendingUp className="h-8 w-8 text-white" />
-          </div>
-          <h3 className="text-xl font-bold mb-2">Ready to Analyze</h3>
-          <p className="text-muted-foreground mb-6">
-            Generate AI-powered stock recommendations with advanced technical analysis
-          </p>
-          <Button
-            onClick={fetchRecommendations}
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Generate Recommendations
-          </Button>
-        </Card>
-      )}
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
     </div>
   );
 };

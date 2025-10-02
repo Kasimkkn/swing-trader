@@ -616,11 +616,11 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get stocks with industry_category information
+    // Get all stocks from database
     const { data: stocks, error: stocksError } = await supabase
       .from('stocks')
       .select('id, symbol, company_name, industry_category')
-      .limit(50);
+      .order('symbol', { ascending: true });
 
     if (stocksError) {
       console.error('Error fetching stocks:', stocksError);
@@ -630,10 +630,11 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Analyzing ${stocks.length} stocks with enhanced technical indicators...`);
+    console.log(`Analyzing ${stocks.length} stocks with enhanced swing-trader logic...`);
 
-    // Process in batches to respect rate limits
-    const allRecommendations = await processStocksBatch(stocks, 5, 2000);
+    // Process in smaller batches to handle larger dataset efficiently
+    // Adjust batch size and delay based on API rate limits
+    const allRecommendations = await processStocksBatch(stocks, 10, 1500);
 
     console.log(`Generated ${allRecommendations.length} valid recommendations`);
 
