@@ -19,12 +19,12 @@ interface StockSearchInputProps {
   showSearchButton?: boolean;
 }
 
-const StockSearchInput = ({ 
-  onSearch, 
-  onStockSelect, 
-  isLoading, 
+const StockSearchInput = ({
+  onSearch,
+  onStockSelect,
+  isLoading,
   placeholder = "Enter stock symbol (e.g., RELIANCE, TCS)",
-  showSearchButton = true 
+  showSearchButton = true
 }: StockSearchInputProps) => {
   const [inputValue, setInputValue] = useState('');
   const [suggestions, setSuggestions] = useState<Stock[]>([]);
@@ -36,7 +36,7 @@ const StockSearchInput = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        inputRef.current && 
+        inputRef.current &&
         !inputRef.current.contains(event.target as Node) &&
         suggestionsRef.current &&
         !suggestionsRef.current.contains(event.target as Node)
@@ -78,7 +78,7 @@ const StockSearchInput = ({
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    
+
     // Debounce suggestions
     const timeoutId = setTimeout(() => {
       fetchSuggestions(value);
@@ -115,7 +115,7 @@ const StockSearchInput = ({
               value={inputValue}
               onChange={(e) => handleInputChange(e.target.value)}
               placeholder={placeholder}
-              className="pl-9 pr-4 py-2 bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-white/40"
+              className="pl-9 pr-4 py-2 bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-white/40 uppercase"
               disabled={isLoading}
               onFocus={() => {
                 if (inputValue && suggestions.length > 0) {
@@ -130,9 +130,9 @@ const StockSearchInput = ({
 
           {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div 
+            <div
               ref={suggestionsRef}
-              className="absolute top-full left-0 right-0 z-50 mt-1 bg-gray-900 border border-white/20 rounded-md shadow-lg max-h-60 overflow-y-auto"
+              className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#262626] border border-white/20 rounded-md shadow-lg max-h-60 overflow-y-auto"
             >
               {suggestions.map((stock) => (
                 <button
@@ -157,8 +157,8 @@ const StockSearchInput = ({
         </div>
 
         {showSearchButton && (
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isLoading || !inputValue.trim()}
             className="bg-white text-black hover:bg-gray-200 disabled:opacity-50"
           >

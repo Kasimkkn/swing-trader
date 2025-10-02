@@ -91,13 +91,13 @@ const MorningRecommendations = () => {
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
-  
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSignal, setSelectedSignal] = useState<string>('all');
   const [selectedDateRange, setSelectedDateRange] = useState<string>('today');
   const [sortBy, setSortBy] = useState<string>('confidence');
-  
+
   const { toast } = useToast();
 
   const fetchRecommendations = async () => {
@@ -327,11 +327,6 @@ const MorningRecommendations = () => {
               <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
                 {stock.companyName}
               </p>
-              {stock.sector && (
-                <Badge variant="secondary" className="text-xs">
-                  {stock.sector}
-                </Badge>
-              )}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <Badge className={getSignalColor(stock.signal)}>
@@ -395,20 +390,6 @@ const MorningRecommendations = () => {
                 <span className="text-muted-foreground font-medium">Stop</span>
               </div>
               <p className="font-bold text-red-400">{formatCurrency(stock.stopLoss)}</p>
-            </div>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2 bg-muted/50 rounded text-center">
-              <p className="text-muted-foreground mb-1">RSI</p>
-              <p className={`font-bold ${stock.technicals.rsi > 70 ? 'text-red-500' : stock.technicals.rsi < 30 ? 'text-green-500' : ''}`}>
-                {formatNumber(stock.technicals.rsi)}
-              </p>
-            </div>
-            <div className="p-2 bg-muted/50 rounded text-center">
-              <p className="text-muted-foreground mb-1">Risk:Reward</p>
-              <p className="font-bold text-primary">{stock.riskReward}</p>
             </div>
           </div>
 
@@ -719,7 +700,7 @@ const MorningRecommendations = () => {
               </TabsTrigger>
               <TabsTrigger value="top" className="gap-2">
                 <Zap className="h-4 w-4" />
-                Top 5 Picks
+                Top Picks
               </TabsTrigger>
             </TabsList>
 
