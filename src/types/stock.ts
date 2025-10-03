@@ -80,6 +80,8 @@ export interface StockAnalysis {
   target: number;
   riskReward: string;
   reasons: string[];
+  recommendation?: string;
+  timeframe?: string;
   technicals: TechnicalIndicators;
   positionSizing: PositionSizing;
   chartData: ChartData[];

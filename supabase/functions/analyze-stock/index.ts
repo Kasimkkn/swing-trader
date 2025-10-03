@@ -284,6 +284,129 @@ async function fetchAndSaveStockDetails(symbol: string) {
   }
 }
 
+// Enhanced swing trader analysis with 20+ years experience logic
+function enhancedSwingAnalysis(indicators: any, currentPrice: number, ma50: number, prices: number[], volumes: number[]): {
+  signal: 'BUY' | 'HOLD' | 'SELL';
+  confidence: number;
+  reasons: string[];
+  entryPrice: number;
+  stopLoss: number;
+  target: number;
+  riskReward: string;
+  recommendation: string;
+} {
+  const reasons: string[] = [];
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  // 1. Trend Analysis (40% weight) - Most important for swing trading
+  if (currentPrice > ma50 && prices[prices.length - 1] > prices[prices.length - 5]) {
+    buyScore += 40;
+    reasons.push('Strong uptrend: Price above 50 DMA with recent momentum');
+  } else if (currentPrice < ma50 && prices[prices.length - 1] < prices[prices.length - 5]) {
+    sellScore += 40;
+    reasons.push('Downtrend: Price below 50 DMA with negative momentum');
+  } else if (currentPrice > ma50) {
+    buyScore += 20;
+    reasons.push('Price above 50 DMA but momentum weakening');
+  }
+
+  // 2. RSI Analysis (30% weight) - Key momentum indicator
+  if (indicators.rsi < 30) {
+    buyScore += 30;
+    reasons.push(`RSI oversold at ${indicators.rsi.toFixed(1)} - potential bounce`);
+  } else if (indicators.rsi > 30 && indicators.rsi < 45) {
+    buyScore += 20;
+    reasons.push(`RSI recovering from oversold at ${indicators.rsi.toFixed(1)}`);
+  } else if (indicators.rsi > 70 && indicators.rsi < 80) {
+    sellScore += 20;
+    reasons.push(`RSI overbought at ${indicators.rsi.toFixed(1)} - potential correction`);
+  } else if (indicators.rsi > 80) {
+    sellScore += 30;
+    reasons.push(`RSI severely overbought at ${indicators.rsi.toFixed(1)} - high risk`);
+  }
+
+  // 3. MACD Analysis (20% weight)
+  if (indicators.macd.line > indicators.macd.signal && indicators.macd.line > 0) {
+    buyScore += 20;
+    reasons.push('MACD bullish crossover with positive momentum');
+  } else if (indicators.macd.line < indicators.macd.signal && indicators.macd.line < 0) {
+    sellScore += 20;
+    reasons.push('MACD bearish crossover with negative momentum');
+  }
+
+  // 4. Volume Confirmation (10% weight)
+  const recentVolume = volumes[volumes.length - 1];
+  const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+  if (recentVolume > avgVolume * 1.5) {
+    if (buyScore > sellScore) {
+      buyScore += 10;
+      reasons.push(`High volume confirmation (${(recentVolume/1000).toFixed(0)}K vs avg)`);
+    } else if (sellScore > buyScore) {
+      sellScore += 10;
+      reasons.push(`High volume on weakness - distribution`);
+    }
+  }
+
+  // Determine signal
+  let signal: 'BUY' | 'HOLD' | 'SELL';
+  let recommendation: string;
+  
+  const totalScore = Math.max(buyScore, sellScore);
+  const confidence = Math.min(95, Math.max(60, totalScore));
+
+  if (buyScore >= 70) {
+    signal = 'BUY';
+    recommendation = `Strong buy opportunity. Enter on dips with ${(currentPrice * 0.02).toFixed(2)} risk per share.`;
+  } else if (buyScore >= 50 && buyScore > sellScore * 1.3) {
+    signal = 'BUY';
+    recommendation = `Good entry point. Monitor price action and volume for confirmation.`;
+  } else if (sellScore >= 70) {
+    signal = 'SELL';
+    recommendation = `Exit positions or take profits. Risk of further downside.`;
+  } else if (sellScore >= 50 && sellScore > buyScore * 1.3) {
+    signal = 'SELL';
+    recommendation = `Consider reducing positions. Watch for support levels.`;
+  } else {
+    signal = 'HOLD';
+    recommendation = `Wait for better entry/exit signals. Current risk-reward not favorable.`;
+  }
+
+  // Calculate entry, stop loss, and target
+  let entryPrice: number;
+  let stopLoss: number;
+  let target: number;
+
+  if (signal === 'BUY') {
+    entryPrice = currentPrice * 1.002; // Small premium
+    stopLoss = currentPrice * 0.95; // 5% stop loss
+    target = currentPrice * 1.10; // 10% target (1:2 risk-reward)
+  } else if (signal === 'SELL') {
+    entryPrice = currentPrice * 0.998;
+    stopLoss = currentPrice * 1.05;
+    target = currentPrice * 0.90;
+  } else {
+    entryPrice = currentPrice;
+    stopLoss = currentPrice * 0.97;
+    target = currentPrice * 1.06;
+  }
+
+  const risk = Math.abs(entryPrice - stopLoss);
+  const reward = Math.abs(target - entryPrice);
+  const riskReward = risk > 0 ? `1:${(reward / risk).toFixed(1)}` : '1:2';
+
+  return {
+    signal,
+    confidence: Math.round(confidence),
+    reasons,
+    entryPrice: Math.round(entryPrice * 100) / 100,
+    stopLoss: Math.round(stopLoss * 100) / 100,
+    target: Math.round(target * 100) / 100,
+    riskReward,
+    recommendation
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -297,18 +420,25 @@ serve(async (req) => {
       throw new Error('Symbol is required');
     }
 
-    console.log(`Analyzing stock: ${symbol}`);
+    console.log(`Comprehensive analysis for: ${symbol}`);
 
-    // Check if stock exists in stocks table, if not fetch and save it
+    // Step 1: Check if stock exists, if not fetch and save it
+    let stockId: string | null = null;
     const { data: existingStock } = await supabase
       .from('stocks')
-      .select('*')
+      .select('id, symbol, company_name')
       .eq('symbol', symbol.toUpperCase())
       .maybeSingle();
 
     if (!existingStock) {
-      console.log(`Stock ${symbol} not found in database, fetching details...`);
-      await fetchAndSaveStockDetails(symbol);
+      console.log(`Stock ${symbol} not found, fetching from Yahoo Finance...`);
+      const savedStock = await fetchAndSaveStockDetails(symbol);
+      if (!savedStock) {
+        throw new Error(`Unable to fetch stock details for ${symbol}. Please verify the symbol.`);
+      }
+      stockId = savedStock.id;
+    } else {
+      stockId = existingStock.id;
     }
 
     // Check if we have recent analysis (within 4 hours)
@@ -408,8 +538,8 @@ serve(async (req) => {
       atr
     };
 
-    // Generate trading signal
-    const signalData = generateSignal(indicators, marketData.currentPrice, ma50);
+    // Generate enhanced swing trading signal
+    const signalData = enhancedSwingAnalysis(indicators, marketData.currentPrice, ma50, closingPrices, volumes);
 
     // Store data in database
     await Promise.all([
@@ -479,6 +609,8 @@ serve(async (req) => {
       target: signalData.target,
       riskReward: signalData.riskReward,
       reasons: signalData.reasons,
+      recommendation: signalData.recommendation,
+      timeframe: '1-3 days',
       technicals: {
         price: marketData.currentPrice,
         dma50: ma50,

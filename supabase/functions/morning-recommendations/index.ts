@@ -616,11 +616,26 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get all stocks from database
+    // Get current batch offset from environment or calculate based on time
+    const batchSize = 250; // Process 250 stocks per run (6 runs to cover 1500 stocks)
+    const currentHour = new Date().getHours();
+    const batchIndex = Math.floor(currentHour / 4) % 6; // Rotate every 4 hours (6 batches)
+    const offset = batchIndex * batchSize;
+
+    console.log(`Processing batch ${batchIndex + 1}/6 (stocks ${offset + 1} to ${offset + batchSize})`);
+
+    // Get stocks for this batch with rotation
+    const { data: allStocksCount } = await supabase
+      .from('stocks')
+      .select('id', { count: 'exact', head: true });
+
+    const totalStocks = allStocksCount || 0;
+
     const { data: stocks, error: stocksError } = await supabase
       .from('stocks')
       .select('id, symbol, company_name, industry_category')
-      .order('symbol', { ascending: true });
+      .order('symbol', { ascending: true })
+      .range(offset, offset + batchSize - 1);
 
     if (stocksError) {
       console.error('Error fetching stocks:', stocksError);
@@ -630,10 +645,9 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Analyzing ${stocks.length} stocks with enhanced swing-trader logic...`);
+    console.log(`Analyzing ${stocks.length} stocks with enhanced swing-trader logic... (Total in DB: ${totalStocks})`);
 
-    // Process in smaller batches to handle larger dataset efficiently
-    // Adjust batch size and delay based on API rate limits
+    // Process stocks with proper rate limiting
     const allRecommendations = await processStocksBatch(stocks, 10, 1500);
 
     console.log(`Generated ${allRecommendations.length} valid recommendations`);

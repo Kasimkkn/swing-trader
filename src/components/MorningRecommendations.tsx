@@ -100,37 +100,109 @@ const MorningRecommendations = () => {
 
   const { toast } = useToast();
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = async (forceRefresh = false) => {
     setIsLoading(true);
     try {
       console.log('Fetching swing-trader recommendations...');
 
-      const { data, error } = await supabase.functions.invoke('morning-recommendations');
+      // Get recommendations from database for today
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data: dbRecommendations, error: dbError } = await supabase
+        .from('ai_recommendations')
+        .select(`
+          *,
+          stocks!inner(
+            symbol,
+            company_name,
+            industry_category
+          )
+        `)
+        .eq('recommendation_date', today)
+        .order('confidence', { ascending: false });
 
-      if (error) {
-        throw new Error(error.message || 'Failed to fetch recommendations');
-      }
+      if (dbError) throw dbError;
 
-      const result = data as RecommendationsResponse;
+      if (dbRecommendations && dbRecommendations.length > 0 && !forceRefresh) {
+        // Use database data
+        const formattedRecs: StockRecommendation[] = dbRecommendations.map((rec: any) => ({
+          symbol: rec.stocks.symbol,
+          companyName: rec.stocks.company_name,
+          signal: rec.signal,
+          confidence: rec.confidence,
+          entryPrice: rec.entry_price || 0,
+          targetPrice: rec.target_price || 0,
+          stopLoss: rec.stop_loss || 0,
+          trailingStop: 0,
+          positionSize: 0,
+          riskReward: '1:2.5',
+          reasons: rec.reasons || [],
+          isHalal: true,
+          sector: rec.stocks.industry_category,
+          technicals: {
+            currentPrice: rec.entry_price || 0,
+            ema20: rec.ema20 || 0,
+            ema50: 0,
+            rsi: rec.rsi || 50,
+            atr: 0,
+            supertrend: 0,
+            supertrendSignal: 'BUY' as 'BUY',
+            macd: 0,
+            macdSignal: 0,
+            bbUpper: 0,
+            bbLower: 0,
+            volume: 0,
+            avgVolume: 0,
+            volatility: 0
+          }
+        }));
 
-      if (result.success) {
-        setRecommendations(result.allRecommendations || []);
-        setTopPicks(result.topPicks || []);
-        setSummary(result.summary || {});
-        setFeatures(result.features || []);
-        setLastUpdated(result.generatedAt);
+        setRecommendations(formattedRecs);
+        setTopPicks(formattedRecs.slice(0, 5));
+        setSummary({
+          totalAnalyzed: dbRecommendations.length,
+          validRecommendations: formattedRecs.length,
+          diversifiedRecommendations: formattedRecs.length,
+          buySignals: formattedRecs.filter(r => r.signal === 'BUY').length,
+          sellSignals: formattedRecs.filter(r => r.signal === 'SELL').length,
+          halalRecommendations: formattedRecs.filter(r => r.isHalal).length
+        });
+        setLastUpdated(new Date().toISOString());
         setHasInitialLoad(true);
 
-        // Save to localStorage
-        localStorage.setItem('morning-recommendations-enhanced', JSON.stringify(result));
-        localStorage.setItem('morning-recommendations-time-enhanced', result.generatedAt);
+        if (!forceRefresh) {
+          toast({
+            title: "📊 Today's Recommendations",
+            description: `Loaded ${formattedRecs.length} recommendations from database`,
+          });
+        }
+      }
 
-        toast({
-          title: "🚀 Recommendations Updated",
-          description: `Found ${result.allRecommendations.length} opportunities with ${result.summary.halalRecommendations} Halal stocks`,
-        });
-      } else {
-        throw new Error('Failed to generate recommendations');
+      // If forced refresh or no database data, call edge function
+      if (forceRefresh || !dbRecommendations || dbRecommendations.length === 0) {
+        const { data, error } = await supabase.functions.invoke('morning-recommendations');
+
+        if (error) {
+          throw new Error(error.message || 'Failed to fetch recommendations');
+        }
+
+        const result = data as RecommendationsResponse;
+
+        if (result.success) {
+          setRecommendations(result.allRecommendations || []);
+          setTopPicks(result.topPicks || []);
+          setSummary(result.summary || {});
+          setFeatures(result.features || []);
+          setLastUpdated(result.generatedAt);
+          setHasInitialLoad(true);
+
+          toast({
+            title: "🚀 Recommendations Updated",
+            description: `Found ${result.allRecommendations.length} opportunities`,
+          });
+        } else {
+          throw new Error('Failed to generate recommendations');
+        }
       }
     } catch (error: any) {
       console.error('Error fetching recommendations:', error);
@@ -144,24 +216,9 @@ const MorningRecommendations = () => {
     }
   };
 
-  // Load cached data on mount
+  // Load today's recommendations on mount
   useEffect(() => {
-    const cachedData = localStorage.getItem('morning-recommendations-enhanced');
-    const cachedTime = localStorage.getItem('morning-recommendations-time-enhanced');
-
-    if (cachedData && cachedTime) {
-      try {
-        const parsed = JSON.parse(cachedData);
-        setRecommendations(parsed.allRecommendations || []);
-        setTopPicks(parsed.topPicks || []);
-        setSummary(parsed.summary || {});
-        setFeatures(parsed.features || []);
-        setLastUpdated(parsed.generatedAt);
-        setHasInitialLoad(true);
-      } catch (error) {
-        console.error('Error parsing cached data:', error);
-      }
-    }
+    fetchRecommendations(false);
   }, []);
 
   // Apply filters and sorting
@@ -555,7 +612,7 @@ const MorningRecommendations = () => {
               </div>
             </div>
             <Button
-              onClick={fetchRecommendations}
+              onClick={() => fetchRecommendations(false)}
               disabled={isLoading}
               className="gap-2"
             >
@@ -686,7 +743,7 @@ const MorningRecommendations = () => {
               <p className="text-muted-foreground mb-4">
                 Click refresh to generate today's swing-trader recommendations
               </p>
-              <Button onClick={fetchRecommendations}>
+              <Button onClick={() => fetchRecommendations(true)}>
                 Generate Recommendations
               </Button>
             </CardContent>

@@ -23,17 +23,12 @@ const Analyse = () => {
         setResearch(null);
 
         try {
-            console.log('Analyzing and researching stock:', symbol);
+            console.log('Comprehensive analysis for stock:', symbol);
 
-            // Run both analysis and research in parallel
-            const [analysisResult, researchResult] = await Promise.all([
-                supabase.functions.invoke('analyze-stock', {
-                    body: { symbol: symbol.toUpperCase() }
-                }),
-                supabase.functions.invoke('research-stock', {
-                    body: { symbol: symbol.toUpperCase() }
-                })
-            ]);
+            // Single unified call for analysis (includes stock creation if needed)
+            const analysisResult = await supabase.functions.invoke('analyze-stock', {
+                body: { symbol: symbol.toUpperCase() }
+            });
 
             // Handle analysis result
             if (analysisResult.error) {
@@ -42,37 +37,36 @@ const Analyse = () => {
 
             if (analysisResult.data && analysisResult.data.symbol) {
                 setAnalysis(analysisResult.data);
-            }
+                
+                // Fetch research in background (non-blocking)
+                supabase.functions.invoke('research-stock', {
+                    body: { symbol: symbol.toUpperCase() }
+                }).then(researchResult => {
+                    if (!researchResult.error && researchResult.data) {
+                        setResearch(researchResult.data);
+                    }
+                    setIsResearching(false);
+                }).catch(() => {
+                    setIsResearching(false);
+                });
 
-            // Handle research result
-            if (researchResult.error) {
-                console.warn('Research failed:', researchResult.error.message);
-            } else if (researchResult.data) {
-                setResearch(researchResult.data);
-            }
-
-            if (analysisResult.data && analysisResult.data.symbol) {
                 toast({
                     title: "Analysis Complete",
-                    description: `Generated ${analysisResult.data.signal} signal for ${analysisResult.data.symbol} with deep research`,
+                    description: `${analysisResult.data.signal} signal for ${analysisResult.data.symbol} - ${analysisResult.data.recommendation}`,
                 });
             } else {
-                toast({
-                    title: "Stock Not Found",
-                    description: `Unable to find data for "${symbol}". Please check the symbol and try again.`,
-                    variant: "destructive",
-                });
+                throw new Error(`Unable to find or fetch data for "${symbol}"`);
             }
         } catch (error: any) {
             console.error('Stock analysis error:', error);
             toast({
                 title: "Analysis Failed",
-                description: error.message || "Unable to analyze stock. Please try again.",
+                description: error.message || "Unable to analyze stock. Please verify the symbol.",
                 variant: "destructive",
             });
+            setIsResearching(false);
         } finally {
             setIsLoading(false);
-            setIsResearching(false);
         }
     };
 
@@ -116,6 +110,24 @@ const Analyse = () => {
                                 <BarChart3 className="h-5 w-5" />
                                 <h3 className="text-xl font-semibold">Technical Analysis</h3>
                             </div>
+
+                            {/* Recommendation Banner */}
+                            {analysis.recommendation && (
+                                <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-6">
+                                    <div className="flex items-start gap-3">
+                                        <Activity className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                        <div>
+                                            <h4 className="font-semibold text-primary mb-1">Expert Recommendation</h4>
+                                            <p className="text-sm">{analysis.recommendation}</p>
+                                            {analysis.timeframe && (
+                                                <p className="text-xs text-muted-foreground mt-2">
+                                                    Timeframe: {analysis.timeframe}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div className="space-y-6">
