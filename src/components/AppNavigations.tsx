@@ -1,5 +1,5 @@
+import { BarChart3, Briefcase, Home } from 'lucide-react';
 import React from 'react';
-import { Home, BarChart3, Briefcase, Heart, Search, Bell, Settings, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface NavigationItem {
@@ -31,12 +31,6 @@ const AppNavigations: React.FC = () => {
             label: 'My PR',
             href: '/portfolio',
             icon: Briefcase,
-        },
-        {
-            id: 'wishlist',
-            label: 'Heart',
-            href: '/wishlist',
-            icon: Heart,
         },
     ];
 
@@ -87,25 +81,6 @@ const AppNavigations: React.FC = () => {
                         {navigationItems.map((item) => (
                             <NavItem key={item.id} item={item} />
                         ))}
-                    </div>
-
-                    {/* Bottom Section */}
-                    <div className="flex flex-col items-center pb-6 space-y-4 border-t border-white/10 pt-4">
-
-                        {/* Notifications */}
-                        <button className="group relative flex flex-col items-center justify-center p-3 rounded-lg text-white hover:text-white/50 hover:bg-white/5 transition-all duration-200">
-                            <Bell className="w-5 h-5 mb-1 group-hover:scale-105 transition-all duration-200" />
-                            <span className="text-[10px] font-medium opacity-80">Alerts</span>
-                            {/* Notification badge */}
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-900"></div>
-                        </button>
-
-                        {/* Settings */}
-                        <button className="group flex flex-col items-center justify-center p-3 rounded-lg text-white hover:text-white/50 hover:bg-white/5 transition-all duration-200">
-                            <Settings className="w-5 h-5 mb-1 group-hover:scale-105 transition-all duration-200" />
-                            <span className="text-[10px] font-medium opacity-80">Settings</span>
-                        </button>
-
                     </div>
                 </div>
             </nav>

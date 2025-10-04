@@ -83,7 +83,6 @@ interface RecommendationsResponse {
 const MorningRecommendations = () => {
   const [recommendations, setRecommendations] = useState<StockRecommendation[]>([]);
   const [filteredRecommendations, setFilteredRecommendations] = useState<StockRecommendation[]>([]);
-  const [topPicks, setTopPicks] = useState<StockRecommendation[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [features, setFeatures] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +94,6 @@ const MorningRecommendations = () => {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSignal, setSelectedSignal] = useState<string>('all');
-  const [selectedDateRange, setSelectedDateRange] = useState<string>('today');
   const [sortBy, setSortBy] = useState<string>('confidence');
 
   const { toast } = useToast();
@@ -107,7 +105,7 @@ const MorningRecommendations = () => {
 
       // Get recommendations from database for today
       const today = new Date().toISOString().split('T')[0];
-      
+
       const { data: dbRecommendations, error: dbError } = await supabase
         .from('ai_recommendations')
         .select(`
@@ -158,7 +156,6 @@ const MorningRecommendations = () => {
         }));
 
         setRecommendations(formattedRecs);
-        setTopPicks(formattedRecs.slice(0, 5));
         setSummary({
           totalAnalyzed: dbRecommendations.length,
           validRecommendations: formattedRecs.length,
@@ -169,13 +166,6 @@ const MorningRecommendations = () => {
         });
         setLastUpdated(new Date().toISOString());
         setHasInitialLoad(true);
-
-        if (!forceRefresh) {
-          toast({
-            title: "📊 Today's Recommendations",
-            description: `Loaded ${formattedRecs.length} recommendations from database`,
-          });
-        }
       }
 
       // If forced refresh or no database data, call edge function
@@ -190,7 +180,6 @@ const MorningRecommendations = () => {
 
         if (result.success) {
           setRecommendations(result.allRecommendations || []);
-          setTopPicks(result.topPicks || []);
           setSummary(result.summary || {});
           setFeatures(result.features || []);
           setLastUpdated(result.generatedAt);
@@ -370,16 +359,6 @@ const MorningRecommendations = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <CardTitle className="text-lg font-bold">{stock.symbol}</CardTitle>
-                {stock.isHalal && (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400">
-                    ✅ Halal
-                  </Badge>
-                )}
-                {isTopPick && (
-                  <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
-                    ⭐ Top Pick
-                  </Badge>
-                )}
               </div>
               <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
                 {stock.companyName}
@@ -407,23 +386,6 @@ const MorningRecommendations = () => {
               <span className="text-xl font-bold">{formatCurrency(stock.technicals.currentPrice)}</span>
             </div>
           </div>
-
-          {/* Key Reason with Tooltip */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg cursor-help">
-                  <div className="flex items-start gap-2">
-                    <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <p className="text-sm text-foreground line-clamp-2">{mainReason}</p>
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                <p className="text-sm">{mainReason}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
 
           {/* Price Targets Grid */}
           <div className="grid grid-cols-3 gap-2 text-xs">
@@ -496,6 +458,23 @@ const MorningRecommendations = () => {
           {isExpanded && (
             <div className="space-y-4 pt-4 border-t border-border">
               {/* All Technical Indicators */}
+
+              {/* Key Reason with Tooltip */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg cursor-help">
+                      <div className="flex items-start gap-2">
+                        <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <p className="text-sm text-foreground line-clamp-2">{mainReason}</p>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <p className="text-sm">{mainReason}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div>
                 <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
@@ -605,10 +584,7 @@ const MorningRecommendations = () => {
                 <Sunrise className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Swing Trader Recommendations</h1>
-                <p className="text-sm text-muted-foreground">
-                  AI-powered stock analysis for 1-3 day swings
-                </p>
+                <h1 className="text-sm md:text-2xl font-bold">Swing Trader Recommendations</h1>
               </div>
             </div>
             <Button
@@ -617,15 +593,13 @@ const MorningRecommendations = () => {
               className="gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Analyzing...' : 'Refresh'}
             </Button>
           </div>
 
           {lastUpdated && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="h-4 w-4" />
               Last updated: {formatTimestamp(lastUpdated)}
-              <span className="text-xs text-primary ml-2">● Auto-updates every 2 hours</span>
             </div>
           )}
         </div>
@@ -635,7 +609,7 @@ const MorningRecommendations = () => {
       {summary && (
         <div className="border-b border-border bg-muted/30">
           <div className="container mx-auto px-4 py-6">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-3  gap-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-primary">{summary.totalAnalyzed}</p>
                 <p className="text-xs text-muted-foreground">Analyzed</p>
@@ -647,18 +621,6 @@ const MorningRecommendations = () => {
               <div className="text-center">
                 <p className="text-2xl font-bold text-red-500">{summary.sellSignals}</p>
                 <p className="text-xs text-muted-foreground">Sell Signals</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">{summary.validRecommendations}</p>
-                <p className="text-xs text-muted-foreground">Valid Picks</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-500">{summary.diversifiedRecommendations}</p>
-                <p className="text-xs text-muted-foreground">Diversified</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{summary.halalRecommendations}</p>
-                <p className="text-xs text-muted-foreground">Halal</p>
               </div>
             </div>
           </div>
@@ -708,27 +670,12 @@ const MorningRecommendations = () => {
               </SelectContent>
             </Select>
 
-            {/* Export */}
-            <Button
-              variant="outline"
-              onClick={exportToCSV}
-              disabled={filteredRecommendations.length === 0}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-
-          {/* Results count */}
-          <div className="mt-3 text-sm text-muted-foreground">
-            Showing {filteredRecommendations.length} of {recommendations.length} recommendations
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="md:px-4 py-6">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
@@ -749,45 +696,24 @@ const MorningRecommendations = () => {
             </CardContent>
           </Card>
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="all" className="gap-2">
-                <Activity className="h-4 w-4" />
-                All Picks ({filteredRecommendations.length})
-              </TabsTrigger>
-              <TabsTrigger value="top" className="gap-2">
-                <Zap className="h-4 w-4" />
-                Top Picks
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="all">
-              {filteredRecommendations.length === 0 ? (
-                <Card className="text-center py-12">
-                  <CardContent>
-                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground">
-                      No recommendations match your filters
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredRecommendations.map((stock) => (
-                    <StockCard key={stock.symbol} stock={stock} />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="top">
+          <>
+            {filteredRecommendations.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    No recommendations match your filters
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {topPicks.map((stock) => (
-                  <StockCard key={stock.symbol} stock={stock} isTopPick />
+                {filteredRecommendations.map((stock) => (
+                  <StockCard key={stock.symbol} stock={stock} />
                 ))}
               </div>
-            </TabsContent>
-          </Tabs>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -24,7 +24,6 @@ const App = () => (
             <Route path="/today" element={<MorningRecommendations />} />
             <Route path="/analyse" element={<Analyse />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
-            <Route path="/wishlist" element={<div>Wishlist Page</div>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
