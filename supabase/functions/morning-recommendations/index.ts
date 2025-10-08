@@ -660,10 +660,13 @@ serve(async (req) => {
     const sellSignals = diversifiedRecommendations.filter(r => r.signal === 'SELL');
     const halalRecommendations = diversifiedRecommendations.filter(r => r.isHalal);
 
-    // Store recommendations in database
+    // Store only BUY signals with confidence >= 85 in database
     const today = new Date().toISOString().split('T')[0];
+    const highConfidenceBuys = allRecommendations.filter(r => r.signal === 'BUY' && r.confidence >= 85);
 
-    for (const rec of allRecommendations) {
+    console.log(`Storing ${highConfidenceBuys.length} high-confidence BUY signals (confidence >= 85%)`);
+
+    for (const rec of highConfidenceBuys) {
       const stock = stocks.find(s => s.symbol === rec.symbol);
       if (!stock) continue;
 
@@ -684,10 +687,7 @@ serve(async (req) => {
             confidence: rec.confidence,
             target_price: rec.targetPrice,
             stop_loss: rec.stopLoss,
-            entry_price: rec.entryPrice,
-            ema20: rec.technicals.ema20,
-            rsi: rec.technicals.rsi,
-            reasons: rec.reasons
+            entry_price: rec.entryPrice
           })
           .eq('id', existing.id);
 
@@ -705,9 +705,6 @@ serve(async (req) => {
             target_price: rec.targetPrice,
             stop_loss: rec.stopLoss,
             entry_price: rec.entryPrice,
-            ema20: rec.technicals.ema20,
-            rsi: rec.technicals.rsi,
-            reasons: rec.reasons,
             recommendation_date: today
           });
 
@@ -725,6 +722,7 @@ serve(async (req) => {
         totalAnalyzed: stocks.length,
         validRecommendations: allRecommendations.length,
         diversifiedRecommendations: diversifiedRecommendations.length,
+        storedRecommendations: highConfidenceBuys.length,
         buySignals: buySignals.length,
         sellSignals: sellSignals.length,
         halalRecommendations: halalRecommendations.length
@@ -740,7 +738,8 @@ serve(async (req) => {
         '✅ Weighted scoring system with conflict resolution',
         '✅ Sector diversification filters',
         '✅ Halal stock certification',
-        '✅ Enhanced error handling and rate limiting'
+        '✅ Enhanced error handling and rate limiting',
+        '✅ Only stores BUY signals with 85%+ confidence'
       ]
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

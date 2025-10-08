@@ -360,11 +360,10 @@ const PortfolioPage: React.FC = () => {
 
                     if (updateError) throw updateError;
                 } else {
-                    // Full sell - mark as sold
+                    // Full sell - mark as sold (keep original quantity for records)
                     const { error: updateError } = await supabase
                         .from('portfolio')
                         .update({
-                            quantity: 0,
                             selling_price: sellPrice,
                             sell_date: formData.sellDate,
                             status: 'sold'

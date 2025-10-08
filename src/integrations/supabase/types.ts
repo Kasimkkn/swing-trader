@@ -18,13 +18,9 @@ export type Database = {
         Row: {
           confidence: number
           created_at: string
-          ema20: number | null
-          ema9: number | null
           entry_price: number | null
           id: string
-          reasons: string[] | null
           recommendation_date: string
-          rsi: number | null
           signal: string
           stock_id: string
           stop_loss: number | null
@@ -34,13 +30,9 @@ export type Database = {
         Insert: {
           confidence: number
           created_at?: string
-          ema20?: number | null
-          ema9?: number | null
           entry_price?: number | null
           id?: string
-          reasons?: string[] | null
           recommendation_date?: string
-          rsi?: number | null
           signal: string
           stock_id: string
           stop_loss?: number | null
@@ -50,13 +42,9 @@ export type Database = {
         Update: {
           confidence?: number
           created_at?: string
-          ema20?: number | null
-          ema9?: number | null
           entry_price?: number | null
           id?: string
-          reasons?: string[] | null
           recommendation_date?: string
-          rsi?: number | null
           signal?: string
           stock_id?: string
           stop_loss?: number | null

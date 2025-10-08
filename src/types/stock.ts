@@ -20,10 +20,6 @@ export interface AIRecommendation {
   target_price?: number;
   stop_loss?: number;
   entry_price?: number;
-  ema9?: number;
-  ema20?: number;
-  rsi?: number;
-  reasons?: string[];
   recommendation_date: string;
   created_at: string;
   updated_at: string;

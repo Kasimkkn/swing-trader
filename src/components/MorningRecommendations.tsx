@@ -46,6 +46,7 @@ interface StockRecommendation {
   reasons: string[];
   isHalal?: boolean;
   sector?: string;
+  timestamp?: string;
   technicals: {
     currentPrice: number;
     ema20: number;
@@ -117,43 +118,52 @@ const MorningRecommendations = () => {
           )
         `)
         .eq('recommendation_date', today)
+        .eq('signal', 'BUY')
+        .gte('confidence', 85)
         .order('confidence', { ascending: false });
 
       if (dbError) throw dbError;
 
       if (dbRecommendations && dbRecommendations.length > 0 && !forceRefresh) {
         // Use database data
-        const formattedRecs: StockRecommendation[] = dbRecommendations.map((rec: any) => ({
-          symbol: rec.stocks.symbol,
-          companyName: rec.stocks.company_name,
-          signal: rec.signal,
-          confidence: rec.confidence,
-          entryPrice: rec.entry_price || 0,
-          targetPrice: rec.target_price || 0,
-          stopLoss: rec.stop_loss || 0,
-          trailingStop: 0,
-          positionSize: 0,
-          riskReward: '1:2.5',
-          reasons: rec.reasons || [],
-          isHalal: true,
-          sector: rec.stocks.industry_category,
-          technicals: {
-            currentPrice: rec.entry_price || 0,
-            ema20: rec.ema20 || 0,
-            ema50: 0,
-            rsi: rec.rsi || 50,
-            atr: 0,
-            supertrend: 0,
-            supertrendSignal: 'BUY' as 'BUY',
-            macd: 0,
-            macdSignal: 0,
-            bbUpper: 0,
-            bbLower: 0,
-            volume: 0,
-            avgVolume: 0,
-            volatility: 0
-          }
-        }));
+        const formattedRecs: StockRecommendation[] = dbRecommendations.map((rec: any) => {
+          const riskReward = rec.target_price && rec.entry_price && rec.stop_loss 
+            ? `1:${((rec.target_price - rec.entry_price) / (rec.entry_price - rec.stop_loss)).toFixed(1)}`
+            : '1:2.5';
+
+          return {
+            symbol: rec.stocks.symbol,
+            companyName: rec.stocks.company_name,
+            signal: rec.signal,
+            confidence: rec.confidence,
+            entryPrice: rec.entry_price || 0,
+            targetPrice: rec.target_price || 0,
+            stopLoss: rec.stop_loss || 0,
+            trailingStop: 0,
+            positionSize: 0,
+            riskReward,
+            reasons: [`Generated at ${formatTimestamp(rec.created_at)}`],
+            isHalal: true,
+            sector: rec.stocks.industry_category,
+            timestamp: rec.created_at,
+            technicals: {
+              currentPrice: rec.entry_price || 0,
+              ema20: 0,
+              ema50: 0,
+              rsi: 50,
+              atr: 0,
+              supertrend: 0,
+              supertrendSignal: 'BUY' as 'BUY',
+              macd: 0,
+              macdSignal: 0,
+              bbUpper: 0,
+              bbLower: 0,
+              volume: 0,
+              avgVolume: 0,
+              volatility: 0
+            }
+          };
+        });
 
         setRecommendations(formattedRecs);
         setSummary({
@@ -363,6 +373,12 @@ const MorningRecommendations = () => {
               <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
                 {stock.companyName}
               </p>
+              {stock.timestamp && (
+                <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {formatTimestamp(stock.timestamp)}
+                </p>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <Badge className={getSignalColor(stock.signal)}>
