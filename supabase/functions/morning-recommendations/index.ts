@@ -617,20 +617,26 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get current batch offset from environment or calculate based on time
-    const batchSize = 250; // Process 250 stocks per run (6 runs to cover 1500 stocks)
-    const currentHour = new Date().getHours();
-    const batchIndex = Math.floor(currentHour / 4) % 6; // Rotate every 4 hours (6 batches)
+    const batchSize = 100; // Process 100 stocks per run (15 runs to cover 1500 stocks)
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Calculate batch index based on 15-minute intervals (96 intervals per day)
+    const now = new Date();
+    const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+    const intervalIndex = Math.floor(minutesSinceMidnight / 15); // 0-95 (96 intervals per day)
+    const batchIndex = intervalIndex % 15; // Rotate through 15 batches
     const offset = batchIndex * batchSize;
 
-    console.log(`Processing batch ${batchIndex + 1}/6 (stocks ${offset + 1} to ${offset + batchSize})`);
+    console.log(`Processing batch ${batchIndex + 1}/15 (stocks ${offset + 1} to ${offset + batchSize}) at ${now.toLocaleTimeString()}`);
 
-    // Get stocks for this batch with rotation
+    // Get stocks for this batch that haven't been analyzed today
     const { data: allStocksCount } = await supabase
       .from('stocks')
       .select('id', { count: 'exact', head: true });
 
     const totalStocks = allStocksCount || 0;
 
+    // Get all stocks in this batch range
     const { data: stocks, error: stocksError } = await supabase
       .from('stocks')
       .select('id, symbol, company_name, industry_category')
@@ -645,10 +651,44 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Analyzing ${stocks.length} stocks with enhanced swing-trader logic... (Total in DB: ${totalStocks})`);
+    // Filter out stocks already analyzed today
+    const { data: analyzedToday } = await supabase
+      .from('ai_recommendations')
+      .select('stock_id')
+      .eq('recommendation_date', today);
+
+    const analyzedStockIds = new Set(analyzedToday?.map(r => r.stock_id) || []);
+    const stocksToAnalyze = stocks.filter(stock => !analyzedStockIds.has(stock.id));
+
+    console.log(`Found ${stocks.length} stocks in batch, ${stocksToAnalyze.length} not yet analyzed today`);
+
+    if (stocksToAnalyze.length === 0) {
+      console.log('All stocks in this batch already analyzed today');
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'All stocks in this batch already analyzed',
+        summary: {
+          totalAnalyzed: 0,
+          validRecommendations: 0,
+          diversifiedRecommendations: 0,
+          storedRecommendations: 0,
+          buySignals: 0,
+          sellSignals: 0,
+          halalRecommendations: 0
+        },
+        topPicks: [],
+        allRecommendations: [],
+        generatedAt: new Date().toISOString(),
+        features: []
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`Analyzing ${stocksToAnalyze.length} stocks with enhanced swing-trader logic... (Total in DB: ${totalStocks})`);
 
     // Process stocks with proper rate limiting
-    const allRecommendations = await processStocksBatch(stocks, 10, 1500);
+    const allRecommendations = await processStocksBatch(stocksToAnalyze, 10, 1500);
 
     console.log(`Generated ${allRecommendations.length} valid recommendations`);
 
@@ -661,56 +701,29 @@ serve(async (req) => {
     const halalRecommendations = diversifiedRecommendations.filter(r => r.isHalal);
 
     // Store only BUY signals with confidence >= 85 in database
-    const today = new Date().toISOString().split('T')[0];
     const highConfidenceBuys = allRecommendations.filter(r => r.signal === 'BUY' && r.confidence >= 85);
 
     console.log(`Storing ${highConfidenceBuys.length} high-confidence BUY signals (confidence >= 85%)`);
 
     for (const rec of highConfidenceBuys) {
-      const stock = stocks.find(s => s.symbol === rec.symbol);
+      const stock = stocksToAnalyze.find(s => s.symbol === rec.symbol);
       if (!stock) continue;
 
-      // Check if recommendation exists for today
-      const { data: existing } = await supabase
+      // Insert new recommendation (we already filtered out analyzed stocks)
+      const { error: insertError } = await supabase
         .from('ai_recommendations')
-        .select('id')
-        .eq('stock_id', stock.id)
-        .eq('recommendation_date', today)
-        .maybeSingle();
+        .insert({
+          stock_id: stock.id,
+          signal: rec.signal,
+          confidence: rec.confidence,
+          target_price: rec.targetPrice,
+          stop_loss: rec.stopLoss,
+          entry_price: rec.entryPrice,
+          recommendation_date: today
+        });
 
-      if (existing) {
-        // Update existing recommendation
-        const { error: updateError } = await supabase
-          .from('ai_recommendations')
-          .update({
-            signal: rec.signal,
-            confidence: rec.confidence,
-            target_price: rec.targetPrice,
-            stop_loss: rec.stopLoss,
-            entry_price: rec.entryPrice
-          })
-          .eq('id', existing.id);
-
-        if (updateError) {
-          console.error(`Error updating recommendation for ${rec.symbol}:`, updateError);
-        }
-      } else {
-        // Insert new recommendation
-        const { error: insertError } = await supabase
-          .from('ai_recommendations')
-          .insert({
-            stock_id: stock.id,
-            signal: rec.signal,
-            confidence: rec.confidence,
-            target_price: rec.targetPrice,
-            stop_loss: rec.stopLoss,
-            entry_price: rec.entryPrice,
-            recommendation_date: today
-          });
-
-        if (insertError) {
-          console.error(`Error inserting recommendation for ${rec.symbol}:`, insertError);
-        }
+      if (insertError) {
+        console.error(`Error inserting recommendation for ${rec.symbol}:`, insertError);
       }
     }
 
@@ -719,7 +732,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       summary: {
-        totalAnalyzed: stocks.length,
+        totalAnalyzed: stocksToAnalyze.length,
         validRecommendations: allRecommendations.length,
         diversifiedRecommendations: diversifiedRecommendations.length,
         storedRecommendations: highConfidenceBuys.length,
@@ -739,7 +752,9 @@ serve(async (req) => {
         '✅ Sector diversification filters',
         '✅ Halal stock certification',
         '✅ Enhanced error handling and rate limiting',
-        '✅ Only stores BUY signals with 85%+ confidence'
+        '✅ Only stores BUY signals with 85%+ confidence',
+        '✅ Smart batch rotation every 15 minutes',
+        '✅ Prevents duplicate analysis of same stock'
       ]
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
