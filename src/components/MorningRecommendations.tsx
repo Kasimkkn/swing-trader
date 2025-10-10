@@ -71,6 +71,7 @@ interface RecommendationsResponse {
     totalAnalyzed: number;
     validRecommendations: number;
     diversifiedRecommendations: number;
+    storedRecommendations: number;
     buySignals: number;
     sellSignals: number;
     halalRecommendations: number;
@@ -95,18 +96,18 @@ const MorningRecommendations = () => {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSignal, setSelectedSignal] = useState<string>('all');
+  const [selectedDate, setSelectedDate] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('confidence');
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
 
   const { toast } = useToast();
 
   const fetchRecommendations = async (forceRefresh = false) => {
     setIsLoading(true);
     try {
-      console.log('Fetching swing-trader recommendations...');
+      console.log('Fetching all swing-trader recommendations...');
 
-      // Get recommendations from database for today
-      const today = new Date().toISOString().split('T')[0];
-
+      // Get ALL recommendations from database (not just today)
       const { data: dbRecommendations, error: dbError } = await supabase
         .from('ai_recommendations')
         .select(`
@@ -117,14 +118,14 @@ const MorningRecommendations = () => {
             industry_category
           )
         `)
-        .eq('recommendation_date', today)
         .eq('signal', 'BUY')
         .gte('confidence', 85)
+        .order('recommendation_date', { ascending: false })
         .order('confidence', { ascending: false });
 
       if (dbError) throw dbError;
 
-      if (dbRecommendations && dbRecommendations.length > 0 && !forceRefresh) {
+      if (dbRecommendations && dbRecommendations.length > 0) {
         // Use database data
         const formattedRecs: StockRecommendation[] = dbRecommendations.map((rec: any) => {
           const riskReward = rec.target_price && rec.entry_price && rec.stop_loss 
@@ -165,6 +166,10 @@ const MorningRecommendations = () => {
           };
         });
 
+        // Extract unique dates
+        const dates = Array.from(new Set(dbRecommendations.map(r => r.recommendation_date))).sort().reverse();
+        setAvailableDates(dates);
+
         setRecommendations(formattedRecs);
         setSummary({
           totalAnalyzed: dbRecommendations.length,
@@ -178,8 +183,8 @@ const MorningRecommendations = () => {
         setHasInitialLoad(true);
       }
 
-      // If forced refresh or no database data, call edge function
-      if (forceRefresh || !dbRecommendations || dbRecommendations.length === 0) {
+      // If forced refresh, call edge function to generate new batch
+      if (forceRefresh) {
         const { data, error } = await supabase.functions.invoke('morning-recommendations');
 
         if (error) {
@@ -189,16 +194,13 @@ const MorningRecommendations = () => {
         const result = data as RecommendationsResponse;
 
         if (result.success) {
-          setRecommendations(result.allRecommendations || []);
-          setSummary(result.summary || {});
-          setFeatures(result.features || []);
-          setLastUpdated(result.generatedAt);
-          setHasInitialLoad(true);
-
           toast({
-            title: "🚀 Recommendations Updated",
-            description: `Found ${result.allRecommendations.length} opportunities`,
+            title: "🚀 New Batch Analyzed",
+            description: `Analyzed ${result.summary.totalAnalyzed} stocks, found ${result.summary.storedRecommendations} high-confidence opportunities`,
           });
+          
+          // Refresh the data from database
+          fetchRecommendations(false);
         } else {
           throw new Error('Failed to generate recommendations');
         }
@@ -238,6 +240,14 @@ const MorningRecommendations = () => {
       filtered = filtered.filter(stock => stock.signal === selectedSignal);
     }
 
+    // Filter by date
+    if (selectedDate !== 'all') {
+      filtered = filtered.filter(stock => {
+        const stockDate = stock.timestamp ? new Date(stock.timestamp).toISOString().split('T')[0] : '';
+        return stockDate === selectedDate;
+      });
+    }
+
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -255,7 +265,7 @@ const MorningRecommendations = () => {
     });
 
     setFilteredRecommendations(filtered);
-  }, [recommendations, searchQuery, selectedSignal, sortBy]);
+  }, [recommendations, searchQuery, selectedSignal, selectedDate, sortBy]);
 
   const getSignalColor = (signal: string) => {
     switch (signal) {
@@ -658,6 +668,26 @@ const MorningRecommendations = () => {
               />
             </div>
 
+            {/* Date Filter */}
+            <Select value={selectedDate} onValueChange={setSelectedDate}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Dates</SelectItem>
+                {availableDates.map(date => (
+                  <SelectItem key={date} value={date}>
+                    {new Date(date).toLocaleDateString('en-IN', { 
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* Signal Filter */}
             <Select value={selectedSignal} onValueChange={setSelectedSignal}>
               <SelectTrigger className="w-full md:w-[140px]">
@@ -723,10 +753,48 @@ const MorningRecommendations = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredRecommendations.map((stock) => (
-                  <StockCard key={stock.symbol} stock={stock} />
-                ))}
+              <div className="space-y-8">
+                {selectedDate === 'all' ? (
+                  // Group by date when showing all
+                  availableDates.map(date => {
+                    const dateRecs = filteredRecommendations.filter(stock => {
+                      const stockDate = stock.timestamp ? new Date(stock.timestamp).toISOString().split('T')[0] : '';
+                      return stockDate === date;
+                    });
+                    
+                    if (dateRecs.length === 0) return null;
+                    
+                    return (
+                      <div key={date} className="space-y-4">
+                        <div className="flex items-center gap-3 border-b border-border pb-2">
+                          <Calendar className="h-5 w-5 text-primary" />
+                          <h3 className="text-xl font-bold">
+                            {new Date(date).toLocaleDateString('en-IN', { 
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </h3>
+                          <span className="text-sm text-muted-foreground">
+                            ({dateRecs.length} stocks)
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {dateRecs.map((stock, index) => (
+                            <StockCard key={`${stock.symbol}-${date}-${index}`} stock={stock} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  // Show filtered date without grouping
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredRecommendations.map((stock, index) => (
+                      <StockCard key={`${stock.symbol}-${index}`} stock={stock} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

@@ -92,79 +92,7 @@ function calculateATR(data: HistoricalData[], period: number = 14): number {
   return recentTRs.reduce((a, b) => a + b) / period;
 }
 
-function generateSignal(indicators: any, currentPrice: number, ma50: number): {
-  signal: 'BUY' | 'AVOID';
-  confidence: number;
-  reasons: string[];
-  entryPrice: number;
-  stopLoss: number;
-  target: number;
-  riskReward: string;
-} {
-  const reasons: string[] = [];
-  let bullishCount = 0;
-  let bearishCount = 0;
-
-  // RSI analysis
-  if (indicators.rsi < 30) {
-    bullishCount += 2;
-    reasons.push('RSI Oversold');
-  } else if (indicators.rsi > 70) {
-    bearishCount += 2;
-    reasons.push('RSI Overbought');
-  }
-
-  // Price vs Moving Average
-  if (currentPrice > ma50) {
-    bullishCount += 1;
-    reasons.push('Above 50 DMA');
-  } else {
-    bearishCount += 1;
-    reasons.push('Below 50 DMA');
-  }
-
-  // MACD analysis
-  if (indicators.macd.line > indicators.macd.signal) {
-    bullishCount += 1;
-    reasons.push('MACD Bullish');
-  } else {
-    bearishCount += 1;
-    reasons.push('MACD Bearish');
-  }
-
-  // Volume analysis (simplified)
-  if (indicators.volumeRatio > 1.2) {
-    bullishCount += 1;
-    reasons.push('High Volume');
-  }
-
-  const signal = bullishCount > bearishCount ? 'BUY' : 'AVOID';
-  const confidence = Math.min(95, Math.max(55, (Math.abs(bullishCount - bearishCount) / 5) * 100));
-
-  let entryPrice = currentPrice;
-  let stopLoss = currentPrice * 0.95;
-  let target = currentPrice * 1.08;
-
-  if (signal === 'BUY') {
-    entryPrice = currentPrice * 1.002; // Small premium for entry
-    stopLoss = currentPrice * 0.95;
-    target = currentPrice * 1.08;
-  }
-
-  const risk = entryPrice - stopLoss;
-  const reward = target - entryPrice;
-  const riskReward = risk > 0 ? `1:${(reward / risk).toFixed(1)}` : '1:2';
-
-  return {
-    signal,
-    confidence: Math.round(confidence),
-    reasons,
-    entryPrice: Math.round(entryPrice * 100) / 100,
-    stopLoss: Math.round(stopLoss * 100) / 100,
-    target: Math.round(target * 100) / 100,
-    riskReward
-  };
-}
+// Old generateSignal function removed - using enhancedSwingAnalysis only for consistency
 
 async function fetchYahooFinanceData(symbol: string) {
   try {
@@ -300,15 +228,20 @@ function enhancedSwingAnalysis(indicators: any, currentPrice: number, ma50: numb
   let sellScore = 0;
   
   // 1. Trend Analysis (40% weight) - Most important for swing trading
-  if (currentPrice > ma50 && prices[prices.length - 1] > prices[prices.length - 5]) {
+  const priceChange5d = ((prices[prices.length - 1] - prices[prices.length - 5]) / prices[prices.length - 5]) * 100;
+  
+  if (currentPrice > ma50 && priceChange5d > 2) {
     buyScore += 40;
-    reasons.push('Strong uptrend: Price above 50 DMA with recent momentum');
-  } else if (currentPrice < ma50 && prices[prices.length - 1] < prices[prices.length - 5]) {
+    reasons.push(`Strong uptrend: Price above 50 DMA with ${priceChange5d.toFixed(1)}% 5-day momentum`);
+  } else if (currentPrice < ma50 && priceChange5d < -2) {
     sellScore += 40;
-    reasons.push('Downtrend: Price below 50 DMA with negative momentum');
-  } else if (currentPrice > ma50) {
-    buyScore += 20;
-    reasons.push('Price above 50 DMA but momentum weakening');
+    reasons.push(`Downtrend: Price below 50 DMA with ${priceChange5d.toFixed(1)}% negative momentum`);
+  } else if (currentPrice > ma50 && priceChange5d > 0) {
+    buyScore += 25;
+    reasons.push(`Uptrend: Price above 50 DMA with positive momentum`);
+  } else if (currentPrice < ma50 && priceChange5d < 0) {
+    sellScore += 25;
+    reasons.push(`Weak trend: Price below 50 DMA with negative drift`);
   }
 
   // 2. RSI Analysis (30% weight) - Key momentum indicator
